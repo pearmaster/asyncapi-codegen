@@ -1,0 +1,174 @@
+{%-import 'type_helpers.jinja2' as helpers%}
+{%-include 'file_prologue.jinja2'%}
+{%-set className = resolver.ResolveNamespace(usings, ns)+Name+'BrokerConnection'%}
+
+#include <exception>
+#include <string>
+#include <functional>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
+#include <mosquitto.h>
+#include <iostream>
+{%-for inc in includes%}
+#include "{{inc}}"
+{%-endfor%}
+
+{%for using in usings%}
+using namespace {{using | join ("::")}};
+{%-endfor%}
+
+{{className}}::{{Name}}BrokerConnection(
+    {%-if server.TryGetBinding('clientId') is none%}const std::string& clientId{%endif%}
+    {%-for p in server.GetUrl()['parameters'] %}
+        {%-if server.TryGetBinding('clientId') is none or not loop.first%}, {%endif-%}
+        {{helpers.ServerUriVarType(p, server.variables[p])}} {{p}}
+    {%-endfor%}
+    {%-if server.AcceptsUsernamePassword()%}
+        {{-','}} const std::string& username, const std::string& password
+    {%-endif%})
+    : _mosq(NULL), {%if server.TryGetBinding('clientId') is none%}_clientId(clientId){%else%}_clientId("server.TryGetBinding('clientId')"){%endif%}
+    {%-if server.AcceptsUsernamePassword()%}
+        {{-','}} _username(username), _(password)
+    {%-endif%}
+{
+    boost::mutex::scoped_lock lock(_mutex);
+    {##}
+    {%-macro ParseUriVars(var, varType, uriInfo) %}
+    {%-if uriInfo['parameters'] | length == 0%}
+    {{var}} = {{uriInfo['raw'] | quotestring('string' in varType)}};
+    {%-else%}
+    boost::format uriFmt("{{uriInfo['boostFormat']}}");
+    {%-for p in uriInfo['parameters'] %}
+    {%-if 'enum' in server.variables[p]%}
+    {%for e in server.variables[p].enum%}
+    {%-if not loop.first%}else {%endif%}if ({{p}} == {{className}}::{{helpers.ServerUriVarType(p, server.variables[p])}}::{{e|enumify}})
+    {
+        uriFmt % "{{e}}";
+    }
+    {%endfor%}{#enum values#}
+    {%-if 'default' in server.variables[p]-%}
+    else if ({{p}} == {{className}}::{{helpers.ServerUriVarType(p, server.variables[p])}}::_DEFAULT)
+    {
+        uriFmt % "{{server.variables[p].default}}";
+    }
+    {%endif%} {#default#}
+    {%-else%} {#no enum values#}
+    uriFmt % {{p}};
+    {%endif%} {#end not-enum value#}
+    {%-endfor%} {#end parameter loop#}
+    {{var}} = boost::lexical_cast<{{varType}}>(uriFmt.str());
+    {%-endif%} {#end paramter handling#}
+    {%-endmacro-%}
+
+    {{ParseUriVars('_host', 'std::string', server.GetHost())}}
+    {{ParseUriVars('_port', 'int', server.GetPort())}}
+
+    mosquitto_lib_init();
+    _mosq = mosquitto_new(_clientId.c_str(), false, (void*)this);
+
+    mosquitto_connect_callback_set(_mosq, [](struct mosquitto *mosq, void *user, int i)
+    {
+        {{className}} *thisClient = static_cast<{{className}}*>(user);
+        //cout << "Connected to " << thisClient->_host << endl;
+        boost::mutex::scoped_lock lock(thisClient->_mutex);
+        while(!thisClient->_subscriptions.empty())
+        {
+            auto sub = thisClient->_subscriptions.front();
+            //cout << "Subscribing to " << sub._topic << endl;
+            mosquitto_subscribe(mosq, NULL, sub._topic.c_str(), sub._qos);
+            thisClient->_subscriptions.pop();
+        }
+        while(!thisClient->_msgQueue.empty())
+        {
+            auto msg = thisClient->_msgQueue.front();
+            //cout << "Sending message to " << msg._topic << endl;
+            mosquitto_publish(mosq, NULL, msg._topic.c_str(), msg._payload.size(), msg._payload.c_str(), msg._qos, msg._retain);
+            thisClient->_msgQueue.pop();
+        }
+    });
+
+    mosquitto_message_callback_set(_mosq, [](struct mosquitto *mosq, void *user, const struct mosquitto_message *mmsg)
+    {
+        {{className}} *thisClient = static_cast<{{className}}*>(user);
+        //cout << "Fowarding message (" << mmsg->topic << ") to " << thisClient->_messageCallbacks.size() << " callbacks" << endl;
+        std::string topic(mmsg->topic);
+        std::string payload(static_cast<char*>(mmsg->payload), mmsg->payloadlen);
+        for (auto& cb : thisClient->_messageCallbacks)
+        {
+            cb(topic, payload);
+        }
+    
+    });
+
+    {%-if server.AcceptsUsernamePassword()%}
+    mosquitto_username_pw_set(_mosq, _username.c_str(), _password.c_str());
+    {%-endif%}
+    Connect();
+    mosquitto_loop_start(_mosq);
+}
+
+{{className}}::~{{Name}}BrokerConnection()
+{
+    boost::mutex::scoped_lock lock(_mutex);
+    mosquitto_loop_stop(_mosq, true);
+    mosquitto_disconnect(_mosq);
+    mosquitto_destroy(_mosq);
+    mosquitto_lib_cleanup();
+
+}
+
+void {{className}}::Connect()
+{
+    mosquitto_connect(_mosq, _host.c_str(), _port, {{server.TryGetBinding('keepAlive') or 120}});
+}
+
+void {{className}}::Publish(const std::string& topic, const std::string& payload, unsigned qos, bool retain)
+{
+    int rc = mosquitto_publish(_mosq, NULL, topic.c_str(), payload.size(), payload.c_str(), qos, retain);
+    if (rc == MOSQ_ERR_NO_CONN)
+    {
+        {{className}}::MqttMessage msg(topic, payload, qos, retain);
+        boost::mutex::scoped_lock lock(_mutex);
+        _msgQueue.push(msg);
+    }
+    else if (rc == MOSQ_ERR_SUCCESS)
+    {
+        //cout << "Published message to " << topic << endl;
+    }
+}
+
+void {{className}}::Subscribe(const std::string& topic, int qos)
+{
+    int rc = mosquitto_subscribe(_mosq, NULL, topic.c_str(), qos);
+    if (rc == MOSQ_ERR_NO_CONN)
+    {
+        {{className}}::MqttSubscription sub(topic, qos);
+        boost::mutex::scoped_lock lock(_mutex);
+        _subscriptions.push(sub);
+    }
+    else if (rc == MOSQ_ERR_SUCCESS)
+    {
+        //cout << "Subscribed to " << topic << endl;
+    }
+}
+
+void {{className}}::AddMessageCallback(const std::function<void(const std::string&, const std::string&)>& cb)
+{
+    boost::mutex::scoped_lock lock(_mutex);
+    _messageCallbacks.push_back(cb);
+    //cout << "Message callback set" << endl;
+}
+
+bool {{className}}::TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const
+{
+    bool result;
+    int rc = mosquitto_topic_matches_sub(subscr.c_str(), topic.c_str(), &result);
+    if (rc != MOSQ_ERR_SUCCESS)
+    {
+        throw std::runtime_error("Mosquitto error");
+    }
+    return result;
+
+}

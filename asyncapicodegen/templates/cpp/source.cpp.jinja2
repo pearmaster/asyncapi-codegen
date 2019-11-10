@@ -1,0 +1,210 @@
+{%include 'file_prologue.jinja2'%}
+{%-import 'loader.jinja2' as loader-%}
+{%-set className = resolver.ResolveNamespace(usings, ns, '::')+Name%}
+{%-import 'type_helpers.jinja2' as functions-%}
+#pragma once
+
+#include <vector>
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
+
+{%-for inc in includes%}
+#include "{{inc}}"
+{%-endfor%}
+{%for using in usings%}
+using namespace {{using | join ("::")}};
+{%-endfor%}
+
+{%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'parameters' in channelItem%}
+{%-for paramName, paramDef in channelItem['parameters'].items()%}
+{%-if '$ref' not in paramDef %}
+{%-set paramObjName%}{{channelItem.GetName()|PascalCase}}{{paramName|PascalCase}}Param{%endset%}
+{{loader.Class('cpp', resolver, [Name], [], paramObjName, paramDef['schema']) }}
+{%-endif%}
+{%-endfor%}
+{%-endif%}
+{%-endfor%}
+
+
+{%-if spec.id%}
+constexpr char {{className}}::API_ID[];
+{%-endif%}
+{%-if spec.info.title%}
+constexpr char {{className}}::API_TITLE[];
+{%-endif%}
+{%-if spec.info.title%}
+constexpr char {{className}}::API_VERSION[];
+{%-endif%}
+
+{{className}}::{{Name}}(std::shared_ptr<IBrokerConnection> broker) : _broker(broker)
+{
+    _broker->AddMessageCallback([this](const std::string& topic, const std::string& payload)
+    {
+        ReceiveMessage(topic, payload);
+    });
+}
+
+void {{className}}::SetLogCallback(const std::function<void({{className}}::LogLevel, std::string)>& cb)
+{
+    _log = cb;
+}
+
+void {{className}}::ReceiveMessage(const std::string& topic, const std::string& payload)
+{
+    std::stringstream ss;
+    ss << "Received message to " << topic;
+    Log(ss.str());
+    {%-for channelPath, channelItem in spec.channels.items() %}
+    {%-if 'subscribe' in channelItem %}
+    {%-set operation = channelItem['subscribe'] %}
+    if (_broker->TopicMatchesSubscription(topic, "{{channelItem.GetSubscribePath()}}"))
+    {
+        Log("Handling message to {{operation.operationId}}");
+        rapidjson::Document doc;
+        try {
+            {%- if channelItem.GetPathParameters() | length > 0 %}
+            std::vector<std::string> parts;
+            boost::split(parts, topic, boost::is_any_of("/"));
+            if (parts.size() != {{ channelItem.GetPathParts() |length}})
+            {
+                // Even though the topic matched subscription, something went wrong while parsing it
+                return;
+            }
+            {%-for pp in channelItem.GetPathParts()%}
+            {%-if pp[0] == '{' and pp[-1] == '}'%}
+            {%-set paramName %}{{pp |strip('{}')}}{%endset%}
+            {%-set paramType = channelItem.parameters[paramName].GetType(resolver, namespace, usings) %}
+            {%-if paramType in ['int', 'float', 'bool']%}
+            {{paramType}} {{paramName}} =  boost::lexical_cast<{{paramType}}>(parts[{{loop.index-1}}]);
+            {%-elif 'string' in paramType%}
+            {{paramType}} {{paramName}} = parts[{{loop.index-1}}];
+            {%-else%}
+            {{paramType}} {{paramName}} =  {{paramType}}::FromString(parts[{{loop.index-1}}]);
+            {%-endif%} {# paramType #}
+            {%-endif%} {# incoming path part is a parameter #}
+            {%-endfor%} {# loop over path parts #}
+            {%-endif%} {# path includes parameters #}
+            {##}
+            {%-set callbackFuncName%}_{{operation.operationId | camelCase }}Callback{%endset%}
+            {%-set callbackFuncNameErr%}_{{operation.operationId | camelCase }}ErrorCallback{%endset%}
+            {%-if operation.GetRetain() == true%}
+            if (payload.empty())
+            {
+                {%-if channelItem.parameters | length == 0 %}
+                _last{{operation.operationId | camelCase }}Value = boost::none;
+                {%-elif channelItem.parameters | length == 1 %}
+                _last{{operation.operationId | camelCase }}Values.erase({{channelItem.Parameters()[0].name}});
+                {%-else%}
+                std::map<std::size_t, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }}Values;
+                {%-endif%}
+            }
+            else {%endif%}if ({{ callbackFuncName }})
+            {
+                rapidjson::ParseResult ok = doc.Parse(payload.c_str());
+                if (!ok)
+                {
+                    Log("Could not JSON parse {{operation.operationId}} payload.");
+                }
+
+                {{operation.GetMessageType(resolver, ns, usings)}} inMsg = {{operation.GetMessageType(resolver, ns, usings)}}::FromJson(doc);
+
+                if ({{ callbackFuncName }})
+                {
+                    {{ callbackFuncName }}({{-channelItem.CppParamList(resolver, ns, usings, types=False, append=', ')-}}inMsg);
+                }
+
+            }
+        }
+        catch (const boost::bad_lexical_cast&)
+        {
+            // We couldn't find an integer out of the string in the topic name,
+            // so we are dropping the message completely. 
+            // TODO: Log this failure
+        }
+        catch (std::exception& e)
+        {
+            if ({{ callbackFuncNameErr }})
+            {
+                {{ callbackFuncNameErr }}(topic, doc, e.what());
+            }
+            else
+            {
+                Log("Could not create {{operation.GetMessageType(resolver, ns, usings)}} object from payload published at {{channelPath}}");
+            }
+        }
+    }
+    {%-endif-%} {#end subscribe op#}
+    {%-endfor%}
+}
+
+{%for channelPath, channelItem in spec.channels.items() %}
+{#- Handle 'Publish' Topics #}
+{%-if 'publish' in channelItem %}
+{%-set operation = channelItem.publish %}
+
+{%-macro TopicString(channelItem, operation)%}
+{%-if channelItem.parameters | length > 0 %}
+std::stringstream ss;
+ss << boost::format("{{channelItem.GetPathAsBoostFormat()}}") % {{channelItem.GetPathParameters() | join(" % ") | strip("{}")}};
+std::string topicStr = ss.str();
+{%- else %}{# topic is plain string #}
+std::string topicStr("{{ channelPath }}");
+{%- endif %}
+{%-endmacro%}
+
+void {{className}}::{{operation.operationId | PascalCase}}(
+    {{-channelItem.CppParamList(resolver, ns, usings)-}}
+    {%-if channelItem.parameters |length > 0%}, {%endif-%}
+    const {{operation.GetMessageType(resolver, ns, usings)}}& msg
+    {{-operation.CppAdditionalMqttParams()}})
+{
+    {%-set qos = operation.GetQoS() or 'qos' %}
+    {%-set retain %}{%if operation.GetRetain() is not none%}{{operation.GetRetain()}}{%else%}retain{%endif%}{%endset%}
+    {{-TopicString(channelItem, operation) |indent(4)}}
+    rapidjson::StringBuffer buf;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
+    rapidjson::Document doc;
+    msg.ToJson(doc, doc.GetAllocator());
+    doc.Accept(writer);
+    _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}});
+}
+
+{%if operation.GetRetain() != false %}
+void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}{{-operation.CppAdditionalMqttParams(['qos'])}})
+{
+    {%- set qos = operation.GetQoS() or 'qos' %}
+    {{-TopicString(channelItem, operation) |indent(4)}}
+    _broker->Publish(topicStr, "", {{ qos }}, true);
+}
+{%-endif%}
+{%-endif%}
+
+{#- Handle 'Subscribe' topics #}
+{%-if 'subscribe' in channelItem %}
+{%-set operation = channelItem.subscribe %}
+
+void {{className}}::Register{{operation.operationId | PascalCase}}Callbacks({{-''-}}
+    const {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}}& cb, {{''-}}
+    const ErrorCallback& errCb)
+{
+    _{{operation.operationId | camelCase }}Callback = cb;
+    _{{operation.operationId | camelCase }}ErrorCallback = errCb;
+    if (_{{operation.operationId | camelCase }}Callback)
+    {
+        _broker->Subscribe("{{channelItem.GetSubscribePath()}}", 2);
+    }
+}
+{%-endif%}
+{%-endfor%}
+
+void {{className}}::Log(const std::string& msg)
+{
+    if (_log)
+    {
+        _log(LogLevel::DEBUG, msg);
+    }
+}

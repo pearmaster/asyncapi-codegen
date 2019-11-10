@@ -1,0 +1,30 @@
+{%-import 'loader.jinja2' as loader-%}
+{%include 'file_prologue.jinja2'%}
+#pragma once
+
+{%for n in ns%}
+namespace {{n}} {
+{%endfor%}
+
+{%-if '$ref' in message.schema %}
+{%set schemaName%}{{resolver.GetNamespace()}}{%endset%}
+{%-else%}{#Message schema is defined directly#}
+{%set schemaName%}{{message.name|PascalCase}}Schema{%endset%}
+namespace {
+
+    {{loader.Class('hpp', resolver, [], [], schemaName, message.schema) | indent(4) }}
+
+} // end anonymous namespace
+{%-endif%}
+
+class {{Name}} : public {{schemaName}}
+{
+public:
+
+
+private:
+};
+
+{%for n in ns|reverse%}
+} // end namespace {{n}}
+{%endfor%}

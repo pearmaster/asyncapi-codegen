@@ -1,0 +1,153 @@
+{%include 'file_prologue.jinja2'%}
+{%-import 'loader.jinja2' as loader-%}
+{%-import 'type_helpers.jinja2' as functions-%}
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+
+// FIXME: Somehow rapidjson provides a copy of inttypes.h that conflicts
+// with other definitions.  This flag gets things to compile, but
+// we probably need to look into the issue further, especially if we
+// ever try to use 64-bit ints.
+#define RAPIDJSON_NO_INT64DEFINE
+#include "rapidjson/document.h"
+
+
+{%-for dep in spec.channels.CppGetDependencies(resolver) |sort %}
+#include {{dep}}
+{%-endfor%}
+
+{%include 'ibrokerconnection.hpp.jinja2'%}
+
+{%for n in ns%}
+namespace {{n}} {
+{%endfor%}
+
+using ErrorCallback = std::function<void(const std::string& topic, const rapidjson::Value& json, const std::string& errMsg)>;
+
+/*! {{spec.title}}
+ * \class {{Name}}
+ * 
+ */
+class {{Name}}
+{
+public:
+    {%-if spec.id%}
+    static constexpr char API_ID[] = "{{spec.id}}";
+    {%-endif%}
+    {%-if spec.info.title%}
+    static constexpr char API_TITLE[] = "{{spec.info.title}}";
+    {%-endif%}
+    {%-if spec.info.title%}
+    static constexpr char API_VERSION[] = "{{spec.info.version}}";
+    {%-endif%}
+
+    {%for channelPath, channelItem in spec.channels.items() %}
+    {%-if 'parameters' in channelItem%}
+    {%-for paramName, paramDef in channelItem['parameters'].items()%}
+    {%-if '$ref' not in paramDef %}
+    {%-set paramObjName%}{{channelItem.GetName()|PascalCase}}{{paramName|PascalCase}}Param{%endset%}
+    {{loader.Class('hpp', resolver, [Name], [], paramObjName, paramDef['schema']) | indent(4) }}
+    {%-endif%}
+    {%-endfor%}
+    {%-endif%}
+    {%-endfor%}
+
+    enum class LogLevel
+    {
+        DEBUG
+    };
+
+    /*! Constructor.
+     * 
+     */
+    {{Name}}(std::shared_ptr<IBrokerConnection> broker);
+    
+    /*! Default destructor.
+     */
+    virtual ~{{Name}}() = default;
+
+    void SetLogCallback(const std::function<void(LogLevel, std::string)>& cb);
+
+    void ReceiveMessage(const std::string& topic, const std::string& payload);
+
+    {%for channelPath, channelItem in spec.channels.items() %}
+    {#- Handle 'Publish' Topics #}
+    {%-if 'publish' in channelItem %}
+    {%-set operation = channelItem.publish %}
+
+    /*! {{operation.summary}}
+     * Publishes to '{{channelPath}}'
+     {%-if operation.description %}
+     * {{operation.description}}
+     {%-endif%}
+     {%-for paramName, paramItem in channelItem.Parameters().items() %}
+     * \param {{paramItem.GetType(resolver, ns, usings)}} {{paramName}}
+     {%-endfor %}
+     * \param {{operation.GetMessageType(resolver, ns, usings)}} msg
+     */
+    void {{operation.operationId | PascalCase}}(
+        {{-channelItem.CppParamList(resolver, ns, usings, append=', ')-}}
+        const {{operation.GetMessageType(resolver, ns, usings)}}& msg
+        {{-operation.CppAdditionalMqttParams()}});
+
+    {%if operation.GetRetain() != false %}
+    /*! Publishes to '{{channelPath}}' with an empty payload.
+     * With MQTT (and perhaps other frameworks) a message that is retained on the broker may be cleared if a null payload is published.  This function provides that functionality.
+     * \fn void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}});
+     {%-for paramName, paramItem in channelItem.Parameters().items() %}
+     * \param {{paramItem.GetType(resolver, ns, usings)}} {{paramName}} 
+     {%-endfor %}
+     */
+    void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}{{-operation.CppAdditionalMqttParams(['qos'])}});
+    {%endif%}
+    {%endif%}
+
+    {#- Handle 'Subscribe' topics #}
+    {%-if 'subscribe' in channelItem %}
+    {%-set operation = channelItem.subscribe %}
+
+    /*! {{operation.summary}}
+     * Register callbacks for messages to '{{channelPath}}''
+     {%-if operation.description %}
+     * {{operation.description}}
+     {%-endif%}
+     */
+    void Register{{operation.operationId | PascalCase}}Callbacks({{-''-}}
+        const {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}}& cb, {{''-}}
+        const ErrorCallback& errCb);
+    {%-endif%}
+    {%-endfor%}
+
+protected:
+    void Log(const std::string& msg);
+
+private:
+    std::shared_ptr<IBrokerConnection> _broker;
+
+    std::function<void(LogLevel, std::string)> _log;
+
+    {%for channelPath, channelItem in spec.channels.items() -%}
+    {%if 'subscribe' in channelItem %}
+    {%-set operation = channelItem.subscribe %}
+    {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}} _{{operation.operationId | camelCase }}Callback;
+    ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
+    {%-if operation.GetRetain() == true%}
+    {%-if channelItem.parameters | length == 0 %}
+    {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }} _last{{operation.operationId | camelCase }}Value;
+    {%-elif channelItem.parameters | length == 1 %}
+    std::map<{{channelItem.Parameters()[0].GetType(resolver, ns, usings)}}, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }}Values;
+    {%-else%}
+    std::map<std::size_t, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }}Values;
+    {%-endif%}
+    {%-endif%}{#retained false#}
+    {%-endif%}
+    {%-endfor%}
+};
+
+{%for n in ns|reverse%}
+} // end namespace {{n}}
+{%endfor%}

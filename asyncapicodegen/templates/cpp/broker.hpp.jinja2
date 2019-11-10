@@ -1,0 +1,98 @@
+{%-import 'type_helpers.jinja2' as helpers%}
+{%-include 'file_prologue.jinja2'%}
+#pragma once
+
+#include <mosquitto.h>
+#include <queue>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/thread/mutex.hpp>
+
+{%include 'ibrokerconnection.hpp.jinja2'%}
+
+{%for n in ns%}
+namespace {{n}} {
+{%endfor%}
+
+/*! This class presents a connection to a MQTT broker.
+ * It will connect to {{server.url}}
+ */
+class {{Name}}BrokerConnection : public IBrokerConnection
+{
+public:
+    {%-if 'variables' in server%}
+    {%-for varName, varDef in server.variables.items()%}
+    {%-if 'enum' in varDef%}
+    enum class {{helpers.ServerUriVarType(varName, varDef)}}
+    {
+        {%-if 'default' in varDef%}
+        _DEFAULT,
+        {%-endif%}
+        {%-for v in varDef.enum%}
+        {{v | enumify}}{%if not loop.last%},{%endif%}
+        {%-endfor%}
+    };
+    {%-endif%} {#enum#}
+    {%-endfor%}
+    {%-endif%} {#server variables#}
+
+
+    {{Name}}BrokerConnection(
+    {%-if server.TryGetBinding('clientId') is none%}const std::string& clientId{%endif%}
+    {%-for p in server.GetUrl()['parameters'] %}
+        {%-if server.TryGetBinding('clientId') is none or not loop.first%}, {%endif-%}
+        {{helpers.ServerUriVarType(p, server.variables[p])}} {{p}}
+    {%-endfor%}
+    {%-if server.AcceptsUsernamePassword()%}
+        {{-','}} const std::string& username, const std::string& password
+    {%-endif%});
+    virtual ~{{Name}}BrokerConnection();
+
+    virtual void Publish(const std::string& topic, const std::string& payload, unsigned qos, bool retain);
+
+    virtual void Subscribe(const std::string& topic, int qos);
+
+    virtual void AddMessageCallback(const std::function<void(const std::string&, const std::string&)>& cb);
+
+    virtual bool TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const;
+
+protected:
+    virtual void Connect();
+
+
+private:
+    class MqttMessage
+    {
+    public:
+        MqttMessage(const std::string& topic, const std::string& payload, int qos, bool retain) : _topic(topic), _payload(payload), _qos(qos), _retain(retain) {}
+        virtual ~MqttMessage() = default;
+        std::string _topic;
+        std::string _payload;
+        int _qos;
+        bool _retain;
+    };
+
+    struct MqttSubscription
+    {
+        MqttSubscription(const std::string& topic, int qos) : _topic(topic), _qos(qos) {}
+        ~MqttSubscription() = default;
+        std::string _topic;
+        int _qos;
+    };
+
+    mosquitto *_mosq;
+    std::string _host;
+    int _port;
+    {%-if server.AcceptsUsernamePassword()%}
+    std::string _username;
+    std::string _password;
+    {%-endif%}
+    std::string _clientId;
+    std::queue<MqttSubscription> _subscriptions;
+    boost::mutex _mutex;
+    std::vector<std::function<void(const std::string&, const std::string&)>> _messageCallbacks;
+    std::queue<MqttMessage> _msgQueue;
+};
+
+{%for n in ns|reverse%}
+} // end namespace {{n}}
+{%endfor%}

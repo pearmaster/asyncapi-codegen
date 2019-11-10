@@ -1,0 +1,14 @@
+{%macro SubscribeCallback(resolver, ns, usings, channelItem) -%}
+{%-set operation = channelItem.subscribe -%}
+std::function<void({{channelItem.CppParamList(resolver, ns, usings)-}}
+{%-if channelItem.parameters |length > 0%}, {%endif-%}
+const {{operation.GetMessageType(resolver, ns, usings)}}& msg)>
+{%-endmacro-%}
+
+{%-macro ServerUriVarType(varName, varDef)-%}
+{%-if 'enum' in varDef-%}
+{{-varName|PascalCase-}}
+{%-else-%}
+std::string
+{%-endif-%}
+{%-endmacro-%}
