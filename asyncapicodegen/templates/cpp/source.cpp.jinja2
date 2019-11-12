@@ -125,11 +125,11 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
             // so we are dropping the message completely. 
             // TODO: Log this failure
         }
-        catch (std::exception& e)
+        catch (const std::exception& e)
         {
             if ({{ callbackFuncNameErr }})
             {
-                {{ callbackFuncNameErr }}(topic, doc, e.what());
+                {{ callbackFuncNameErr }}(topic, doc, e);
             }
             else
             {

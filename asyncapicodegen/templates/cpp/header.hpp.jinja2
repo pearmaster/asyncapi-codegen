@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <exception>
 
 // FIXME: Somehow rapidjson provides a copy of inttypes.h that conflicts
 // with other definitions.  This flag gets things to compile, but
@@ -26,7 +27,7 @@
 namespace {{n}} {
 {%endfor%}
 
-using ErrorCallback = std::function<void(const std::string& topic, const rapidjson::Value& json, const std::string& errMsg)>;
+using ErrorCallback = std::function<void(const std::string& topic, const rapidjson::Value& json, const std::exception& err)>;
 
 /*! {{spec.title}}
  * \class {{Name}}
