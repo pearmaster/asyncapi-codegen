@@ -5,6 +5,22 @@ from . import templator
 from . import specwrapper
 import jsonschemacodegen.cpp
 
+class GeneratedFiles(object):
+
+    def __init__(self, cppFile=None, hppFile=None):
+        self.cpp = []
+        self.hpp = []
+        if cppFile is not None:
+            self.cpp.append(cFile)
+        if hppFile is not None:
+            self.hpp.append(hFile)
+
+    def __iadd__(self, other):
+        assert(isinstance(other, self))
+        self.cpp.extend(other.cpp)
+        self.hpp.extend(other.hpp)
+
+
 class ResolverBaseClass(abc.ABC):
     pass
 
@@ -52,11 +68,10 @@ class GeneratorFromAsyncApi(object):
 
     def GenerateSchemasForType(self, spec, itemType, getSchemaFunc):
         assert(isinstance(spec, dict))
-        cppFiles = []
-        hppFiles = []
+        genFiles = GeneratedFiles()
         pathBase = "#/components/%s/%s"
         if 'components' not in spec or itemType not in spec['components']:
-            return (None, None)
+            return genFiles
         for name, obj in spec['components'][itemType].items():
             ref = pathBase % (itemType, name)
             print("Generating for %s" % (ref))
@@ -67,36 +82,18 @@ class GeneratorFromAsyncApi(object):
                     self.resolver, ns, self.usings)
             output = schemaGenerator.Generate(getSchemaFunc(obj), stringcase.pascalcase(name), fileBase)
             assert(output is not None), "Generating {} didn't have output".format(name)
-            c, h = output
-            if c is not None:
-                cppFiles.append(c)
-            if h is not None:
-                hppFiles.append(h)
-        return (cppFiles, hppFiles)
+            genFiles += GeneratedFiles(*output)
+        return genFiles
 
     def GenerateSchemas(self, spec):
-        cppFiles = []
-        hppFiles = []
-        c, h = self.GenerateSchemasForType(spec, 'parameters', lambda obj: obj['schema'])
-        if c is not None:
-            cppFiles.extend(c)
-        if h is not None:
-            hppFiles.extend(h)
-        c, h = self.GenerateSchemasForType(spec, 'messages', lambda obj: obj['payload'])
-        if c is not None:
-            cppFiles.extend(c)
-        if h is not None:
-            hppFiles.extend(h)
-        c, h = self.GenerateSchemasForType(spec, 'schemas', lambda obj: obj)
-        if c is not None:
-            cppFiles.extend(c)
-        if h is not None:
-            hppFiles.extend(h)
-        return (cppFiles, hppFiles)
+        genFiles = GeneratedFiles()
+        genFiles += self.GenerateSchemasForType(spec, 'parameters', lambda obj: obj['schema'])
+        genFiles += self.GenerateSchemasForType(spec, 'messages', lambda obj: obj['payload'])
+        genFiles += self.GenerateSchemasForType(spec, 'schemas', lambda obj: obj)
+        return genFiles
 
     def GenerateServers(self, spec):
-        hppFiles = []
-        cppFiles = []
+        genFiles = GeneratedFiles()
         for serverName, serverObj in spec['servers'].items():
             headerFilename = "server_%s.hpp" % (serverName.lower())
             sourceFilename = "server_%s.cpp" % (serverName.lower())
@@ -108,29 +105,24 @@ class GeneratorFromAsyncApi(object):
                 includes=[headerFilename],
                 Name=stringcase.pascalcase(serverName),
                 server=serverObj)
-            cppFiles.append(sourceFilename)
+            genFiles += GeneratedFiles(cppFile=sourceFilename)
             self.headerGenerator.RenderTemplate("broker.hpp.jinja2", 
                 headerFilename,
                 ns=self.namespace,
                 resolver=self.resolver,
                 Name=stringcase.pascalcase(serverName),
                 server=serverObj)
-            hppFiles.append(headerFilename)
-        return (cppFiles, hppFiles)
+            genFiles += GeneratedFiles(hppFile=headerFilename)
+        return genFiles
 
 
     def Generate(self, spec, class_name, filename_base):
         assert(isinstance(spec, dict))
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver.loader)
-        cppFiles = []
-        hppFiles = []
+        genFiles = GeneratedFiles()
 
-        c, h = self.GenerateSchemas(spec)
-        cppFiles.extend(c)
-        hppFiles.extend(h)
-        c, h = self.GenerateServers(wrappedSpec)
-        cppFiles.extend(c)
-        hppFiles.extend(h)
+        genFiles += self.GenerateSchemas(spec)
+        genFiles += self.GenerateServers(wrappedSpec)
 
         args = {
             "Name": class_name,
@@ -145,11 +137,11 @@ class GeneratorFromAsyncApi(object):
             resolver=self.resolver,
             includes=[headerFilename],
             **args)
-        cppFiles.append(sourceFilename)
+        genFiles += GeneratedFiles(cppFile=sourceFilename)
         self.headerGenerator.RenderTemplate("header.hpp.jinja2", 
             headerFilename,
             ns=self.namespace,
             resolver=self.resolver,
             **args)
-        hppFiles.append(headerFilename)
-        return (cppFiles, hppFiles)
+        genFiles += GeneratedFiles(hppFile=headerFilename)
+        return genFiles

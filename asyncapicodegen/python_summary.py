@@ -47,10 +47,12 @@ class GeneratorFromAsyncApi(object):
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver.loader)
 
         self.GenerateSchemasForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
+        self.GenerateSchemasForType(wrappedSpec, 'schemas', lambda obj: obj)
 
-        outputName = "{}.py".format(filename_base)
-        self.generator.RenderTemplate("summary.py.jinja2", 
-            outputName, 
-            spec = wrappedSpec,
-            resolver=self.resolver)
+        if 'channels' in wrappedSpec:
+            outputName = "{}.py".format(filename_base)
+            self.generator.RenderTemplate("summary.py.jinja2", 
+                outputName, 
+                spec = wrappedSpec,
+                resolver=self.resolver)
 
