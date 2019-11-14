@@ -47,10 +47,12 @@ class Operation(BaseDict):
         if 'traits' in self.data:
             for trait in self.data['traits']:
                 if '$ref' in trait:
-                    trait = self.root.Resolve(trait['$ref'])
+                    trait = self.root.Resolve(trait['$ref'], Trait)
                 for k, v in trait.items():
                     if k not in ['message', 'traits']:
                         self.data[k] = v
+        if 'bindings' in self.data and '$ref' in self.data['bindings']:
+            self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
 
     def GetMessageType(self, resolver, namespace, usings):
         if 'message' in self.data and '$ref' in self.data['message']:
@@ -67,7 +69,7 @@ class Operation(BaseDict):
 
     def GetRetain(self):
         try:
-            return int(self.data['bindings']['mqtt']['retain'])
+            return bool(self.data['bindings']['mqtt']['retain'])
         except:
             return None
 
@@ -93,9 +95,6 @@ class ChannelItem(BaseDict):
 
         super().__init__(root, initialdata)
         self.channelPath = channelPath
-
-    def Parameters(self):
-        return list(self.data['parameters'].values())
 
     def CppParamList(self, resolver, namespace, usings, names=True, types=True, constRef=True, prepend='', append=''):
         params = []
@@ -184,6 +183,7 @@ class Channels(BaseDict):
                         deps.add('"%s"' % (resolver.GetHeader(chItem[op]['message']['$ref'])))
         return deps
 
+
 class ServerObject(BaseDict):
 
     def __init__(self, root, name, initialdata):
@@ -199,7 +199,7 @@ class ServerObject(BaseDict):
         pattern = r"\{\w+\}"
         def repl(_):
             repl.i += 1
-            return "%%%d" % (repl.i)
+            return "%%%d%%" % (repl.i)
         repl.i = 0
         urlPart = self.data['url']
         if partIndex is not None:
@@ -238,6 +238,15 @@ class ServerObject(BaseDict):
         return False
 
 
+class Trait(BaseDict):
+
+    def __init__(self, root, initialdata):
+        super().__init__(root, initialdata)
+
+        if 'bindings' in initialdata and '$ref' in initialdata['bindings']:
+            self.data['bindings'] = self.root.Resolve(initialdata['bindings']['$ref'])
+
+
 class Servers(BaseDict):
 
     def __init__(self, root, initialdata):
@@ -274,12 +283,15 @@ class SpecRoot(BaseDict):
         if 'servers' in self.data:
             self.data['servers'] = Servers(self, self.data['servers'])
 
-    def Resolve(self, ref):
+    def Resolve(self, ref, asClass=None, **kwargs):
         theFile, thePath = ref.split('#')
         if len(theFile) > 0:
             if self.loader is not None:
                 otherRoot = self.loader.Load(theFile)
-                return otherRoot.Resolve("#"+thePath)
+                struct = otherRoot.Resolve("#"+thePath)
+                if asClass is not None:
+                    return asClass(otherRoot, struct, **kwargs)
+                return struct
             raise NotImplementedError
         else:
             pathParts = thePath.split('/')

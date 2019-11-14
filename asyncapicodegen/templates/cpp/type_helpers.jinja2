@@ -12,3 +12,10 @@ const {{operation.GetMessageType(resolver, ns, usings)}}& msg)>
 std::string
 {%-endif-%}
 {%-endmacro-%}
+
+{%-macro ParamHash(parameters) %}
+std::size_t seed = 0;
+{%-for param in parameters%}
+boost::combine_hash(seed, {{param.name}});
+{%-endfor%}
+{%-endmacro%}

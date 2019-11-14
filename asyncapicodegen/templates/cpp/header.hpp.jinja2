@@ -59,6 +59,10 @@ public:
 
     enum class LogLevel
     {
+        ERROR,
+        WARNING,
+        NOTICE,
+        INFO,
         DEBUG
     };
 
@@ -120,7 +124,13 @@ public:
     void Register{{operation.operationId | PascalCase}}Callbacks({{-''-}}
         const {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}}& cb, {{''-}}
         const ErrorCallback& errCb);
+
+    {%-if operation.GetRetain() != false %}
+
+    boost::optional<{{operation.GetMessageType(resolver, ns, usings)}}> GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}) const;
     {%-endif%}
+
+    {%-endif%} {# subscribe topics #}
     {%-endfor%}
 
 protected:
@@ -138,11 +148,11 @@ private:
     ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
     {%-if operation.GetRetain() == true%}
     {%-if channelItem.parameters | length == 0 %}
-    {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }} _last{{operation.operationId | camelCase }}Value;
+    boost::optional<{{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
-    std::map<{{channelItem.Parameters()[0].GetType(resolver, ns, usings)}}, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }}Values;
+    std::map<{{channelItem.Parameters()[0].GetType(resolver, ns, usings)}}, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-else%}
-    std::map<std::size_t, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | camelCase }}Values;
+    std::map<std::size_t, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-endif%}
     {%-endif%}{#retained false#}
     {%-endif%}

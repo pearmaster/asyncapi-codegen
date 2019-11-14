@@ -55,8 +55,8 @@ class GeneratorFromAsyncApi(object):
         cppFiles = []
         hppFiles = []
         pathBase = "#/components/%s/%s"
-        if not itemType in spec['components']:
-            return
+        if 'components' not in spec or itemType not in spec['components']:
+            return (None, None)
         for name, obj in spec['components'][itemType].items():
             ref = pathBase % (itemType, name)
             print("Generating for %s" % (ref))
@@ -78,14 +78,20 @@ class GeneratorFromAsyncApi(object):
         cppFiles = []
         hppFiles = []
         c, h = self.GenerateSchemasForType(spec, 'parameters', lambda obj: obj['schema'])
-        cppFiles.extend(c)
-        hppFiles.extend(h)
+        if c is not None:
+            cppFiles.extend(c)
+        if h is not None:
+            hppFiles.extend(h)
         c, h = self.GenerateSchemasForType(spec, 'messages', lambda obj: obj['payload'])
-        cppFiles.extend(c)
-        hppFiles.extend(h)
+        if c is not None:
+            cppFiles.extend(c)
+        if h is not None:
+            hppFiles.extend(h)
         c, h = self.GenerateSchemasForType(spec, 'schemas', lambda obj: obj)
-        cppFiles.extend(c)
-        hppFiles.extend(h)
+        if c is not None:
+            cppFiles.extend(c)
+        if h is not None:
+            hppFiles.extend(h)
         return (cppFiles, hppFiles)
 
     def GenerateServers(self, spec):
