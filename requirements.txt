@@ -1,3 +1,4 @@
 jinja2
 stringcase
-json-schema-codegen>=0.0.8
+json-schema-codegen>=0.0.9
+pyyaml

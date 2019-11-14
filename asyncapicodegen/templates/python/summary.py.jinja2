@@ -1,0 +1,28 @@
+import json
+
+def ToJsonString(obj):
+    return json.dumps(obj, default=lambda x: x.Serializable())
+{##}
+{%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
+{{inc}}
+{%-endfor%}
+
+OPERATIONS={
+{%-for topic, channelItem in spec.channels.items()%}
+    {%-set operationType = 'subscribe' in channelItem and 'subscribe' or 'publish'%}
+    "{{channelItem[operationType]['operationId']}}": {
+        "id": "{{channelItem[operationType]['operationId']}}",
+        "mqtt_action": "{{operationType}}",
+        "topic": "{{topic}}",
+        "message": {{resolver.ClassName(channelItem[operationType]['message']['$ref'])}},
+        {%-if channelItem[operationType].GetQoS()%}
+        "qos": {{channelItem[operationType].GetQoS()}},
+        {%-endif%}
+        {%-if channelItem[operationType].GetRetain() is not none%}
+        "retain": {{channelItem[operationType].GetRetain()}},
+        {%-endif%}  
+    },
+{%-endfor%}
+}
+
+

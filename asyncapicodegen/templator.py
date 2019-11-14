@@ -69,6 +69,7 @@ class Generator(object):
         if self.jinjaEnvironment is None:
             #env = jinja2.Environment(loader=jinja2.PackageLoader(self.templatePkg, ''))
             loader = jinja2.ChoiceLoader([
+                jinja2.PackageLoader(self.templatePkg, ''),
                 jinja2.FileSystemLoader(searchpath="./templates/cpp"),
                 jinja2.PackageLoader('asyncapicodegen.templates.cpp', ''),
                 jinja2.PackageLoader('jsonschemacodegen.templates.cpp', ''),

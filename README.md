@@ -36,6 +36,7 @@ See also [requirements.txt](./requirements.txt)
 * jinja2
 * stringcase
 * json-schema-codegen
+* pyyaml
 
 
 ### C++ requirements for generated code

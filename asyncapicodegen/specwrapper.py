@@ -183,6 +183,14 @@ class Channels(BaseDict):
                         deps.add('"%s"' % (resolver.GetHeader(chItem[op]['message']['$ref'])))
         return deps
 
+    def PyGetIncludes(self, resolver):
+        deps = set()
+        for chItem in self.data.values():
+            for op in ['subscribe', 'publish']:
+                if op in chItem:
+                    if '$ref' in chItem[op]['message']:
+                        deps.add(resolver.IncludeStatement(chItem[op]['message']['$ref']))
+        return deps
 
 class ServerObject(BaseDict):
 
@@ -292,7 +300,7 @@ class SpecRoot(BaseDict):
                 if asClass is not None:
                     return asClass(otherRoot, struct, **kwargs)
                 return struct
-            raise NotImplementedError
+            raise NotImplementedError("No loader available for {}".format(theFile))
         else:
             pathParts = thePath.split('/')
             cur = self

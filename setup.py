@@ -7,7 +7,7 @@ with open("requirements.txt", "r") as fp:
     requirements = fp.read().split('\n')
 
 setup(name='asyncapi-codegen',
-      version='0.0.2',
+      version='0.0.3',
       url='http://github.com/pearmaster/asyncapi-codgen',
       author='Jacob Brunson',
       author_email='pypi@jacobbrunson.com',
@@ -18,9 +18,11 @@ setup(name='asyncapi-codegen',
       packages=[
           'asyncapicodegen',
           'asyncapicodegen.templates.cpp',
+          'asyncapicodegen.templates.python',
       ],
       package_data={
-            'asyncapicodegen.templates.cpp': ['*.jinja2']
+            'asyncapicodegen.templates.cpp': ['*.jinja2'],
+            'asyncapicodegen.templates.python': ['*.jinja2'],
       },
       zip_safe=False,
       install_requires=requirements,

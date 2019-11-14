@@ -1,0 +1,56 @@
+import abc
+import stringcase
+import yaml
+
+from . import templator
+from . import specwrapper
+import jsonschemacodegen.python
+
+class SimpleResolver(jsonschemacodegen.python.SimpleResolver):
+    
+    class Loader(object):
+        
+        def Load(self, uri):
+            assert('yaml' in uri or 'yml' in uri), "Only YAML is supported at this time"
+            with open(uri) as fp:
+                spec = yaml.load(fp, Loader=yaml.FullLoader)
+            return specwrapper.SpecRoot(spec, self)
+
+    def __init__(self, loader=None):
+        loader = (loader is not None) and loader or self.Loader()
+        super().__init__(loader=loader)
+
+
+class GeneratorFromAsyncApi(object):
+
+    def __init__(self, output_dir, resolver=None):
+        self.output_dir = output_dir
+        self.resolver = resolver
+        self.generator = templator.Generator('asyncapicodegen.templates.python', self.output_dir)
+
+    def GenerateSchemasForType(self, spec, itemType, getSchemaFunc):
+        files = []
+        pathBase = "#/components/%s/%s"
+        if 'components' not in spec or itemType not in spec['components']:
+            return files
+        for name, obj in spec['components'][itemType].items():
+            ref = pathBase % (itemType, name)
+            print("Generating for %s" % (ref))
+            fileBase = self.resolver.FileName(ref)
+            schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
+            output = schemaGenerator.Generate(getSchemaFunc(obj), stringcase.pascalcase(name), fileBase)
+            files.append(output)
+        return files
+
+    def Generate(self, spec, class_name, filename_base):
+        assert(isinstance(spec, dict))
+        wrappedSpec = specwrapper.SpecRoot(spec, self.resolver.loader)
+
+        self.GenerateSchemasForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
+
+        outputName = "{}.py".format(filename_base)
+        self.generator.RenderTemplate("summary.py.jinja2", 
+            outputName, 
+            spec = wrappedSpec,
+            resolver=self.resolver)
+
