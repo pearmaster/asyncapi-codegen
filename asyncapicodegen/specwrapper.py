@@ -1,6 +1,8 @@
 import collections
 import stringcase
 import re
+from jsonschemacodegen import json_example
+import json
 
 class BaseDict(collections.UserDict):
 
@@ -55,11 +57,26 @@ class Operation(BaseDict):
             self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
 
     def GetMessageType(self, resolver, namespace, usings):
+        """ TODO: Rename this to Cpp
+        """
         if 'message' in self.data and '$ref' in self.data['message']:
             return resolver.GetNamespace(self.data['message']['$ref'], usings, '::')+resolver.GetName(self.data['message']['$ref'])
         else:
             print (self.data)
             raise NotImplementedError
+
+    def Examples(self, loader):
+        generator = json_example.GeneratorFromSchema(loader)
+        try:
+            if '$ref' in self.data['message']:
+                examples = generator.Generate(loader.GetSchema(self.data['message']['$ref'])['payload'])
+            else:
+                examples = generator.Generate(self.data['message']['payload'])
+        except KeyError:
+            raise NotImplementedError(self.data)
+        exampleList = [json.dumps(ex, indent=2, sort_keys=True) for ex in examples]
+        sorted(exampleList, reverse=True)
+        return exampleList
 
     def GetQoS(self):
         try:

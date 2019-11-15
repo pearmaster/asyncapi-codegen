@@ -1,0 +1,44 @@
+{%-set client = spec['x-client-role'] or 'client'%}
+# MQTT _Summary_ of {{ spec.info.title }} {{client |PascalCase}}
+*Version {{ spec.info.version }}*
+
+{{spec.info.description}}
+
+## {{client |PascalCase}} may publish...
+{%for ch in spec.channels.values() if 'publish' in ch%}
+{%-set op = ch.publish %}
+### {{op.summary or ch.operationId}}
+{{op.description}}
+
+#### Topic: `{{ch.channelPath}}`
+
+##### Examples:
+
+{%-for ex in op.Examples(loader)%}
+```json
+{{ex}}
+```
+{%-endfor%} {#examples#}
+----
+{% endfor %} {#publish operations#}
+
+### {{client |PascalCase}} may subscribe...
+{%for ch in spec.channels.values() if 'subscribe' in ch%}
+{%-set op = ch.subscribe %}
+## {{op.summary or ch.operationId}}
+{{op.description}}
+
+#### Topic: `{{ch.channelPath}}`
+{%-if ch.GetPathParameters() | length > 0 %}
+The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
+{%-endif%} {#has params#}
+
+##### Examples:
+
+{%-for ex in op.Examples(loader)%}
+```json
+{{ex}}
+```
+{%-endfor%} {#examples#}
+----
+{% endfor %} {#subscribe operations#}
