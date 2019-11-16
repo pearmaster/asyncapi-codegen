@@ -14,7 +14,7 @@
 
 ##### Examples:
 
-{%-for ex in op.Examples(loader)%}
+{%-for ex in op.Examples(loader) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```
@@ -35,7 +35,7 @@ The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
 
 ##### Examples:
 
-{%-for ex in op.Examples(loader)%}
+{%-for ex in op.Examples(loader) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```
