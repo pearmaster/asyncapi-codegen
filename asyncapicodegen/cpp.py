@@ -11,15 +11,15 @@ class GeneratedFiles(object):
         self.cpp = []
         self.hpp = []
         if cppFile is not None:
-            self.cpp.append(cFile)
+            self.cpp.append(cppFile)
         if hppFile is not None:
-            self.hpp.append(hFile)
+            self.hpp.append(hppFile)
 
     def __iadd__(self, other):
-        assert(isinstance(other, self))
+        assert(isinstance(other, type(self)))
         self.cpp.extend(other.cpp)
         self.hpp.extend(other.hpp)
-
+        return self
 
 class ResolverBaseClass(abc.ABC):
     pass
