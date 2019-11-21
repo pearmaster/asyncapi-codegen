@@ -10,11 +10,11 @@
 ### {{op.summary or ch.operationId}}
 {{op.description}}
 
-#### Topic: `{{ch.channelPath}}`
+#### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
 
 ##### Examples:
 
-{%-for ex in op.Examples(loader) |sort(reverse=True)%}
+{%-for ex in op.Examples(resolver) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```
@@ -22,20 +22,20 @@
 ----
 {% endfor %} {#publish operations#}
 
-### {{client |PascalCase}} may subscribe...
+## {{client |PascalCase}} may subscribe...
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}
-## {{op.summary or ch.operationId}}
+### {{op.summary or ch.operationId}}
 {{op.description}}
 
-#### Topic: `{{ch.channelPath}}`
+#### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
 {%-if ch.GetPathParameters() | length > 0 %}
 The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
 {%-endif%} {#has params#}
 
 ##### Examples:
 
-{%-for ex in op.Examples(loader) |sort(reverse=True)%}
+{%-for ex in op.Examples(resolver) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```

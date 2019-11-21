@@ -65,15 +65,17 @@ class Operation(BaseDict):
             print (self.data)
             raise NotImplementedError
 
-    def Examples(self, loader):
-        generator = json_example.GeneratorFromSchema(loader)
-        try:
-            if '$ref' in self.data['message']:
-                examples = generator.Generate(loader.GetSchema(self.data['message']['$ref'])['payload'])
-            else:
-                examples = generator.Generate(self.data['message']['payload'])
-        except KeyError:
-            raise NotImplementedError(self.data)
+    def Examples(self, resolver):
+        generator = json_example.GeneratorFromSchema(resolver)
+        if '$ref' in self.data['message']:
+            try:
+                doc = resolver.get_document(self.data['message']['$ref'])
+            except KeyError:
+                doc = self.root
+            message_json = resolver.get_json(self.data['message']['$ref'], doc)
+            examples = generator.Generate(doc, message_json['payload'])
+        else:
+            examples = generator.Generate(self.root, self.data['message']['payload'])
         exampleList = [json.dumps(ex, indent=2, sort_keys=True) for ex in examples]
         sorted(exampleList, reverse=True)
         return exampleList
