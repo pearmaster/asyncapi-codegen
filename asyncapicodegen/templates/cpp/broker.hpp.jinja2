@@ -35,7 +35,20 @@ public:
     {%-endfor%}
     {%-endif%} {#server variables#}
 
-
+    /*! Constructor for a {{Name}}BrokerConnection.
+    {%-if server.TryGetBinding('clientId') is none%}
+     * \param clientId is the client ID used to connect to the broker.
+    {%-else%}
+     * The client will connect to the broker with the client ID of "{{server.TryGetBinding('clientId')}}".
+    {%-endif%}
+    {%-for p in server.GetUrl()['parameters'] %}
+     * \param {{p}} a value to used for the MQTT broker URI.
+    {%-endfor%}
+    {%-if server.AcceptsUsernamePassword()%}
+     * \param username is the username to use for authenticating against the broker.
+     * \param password is the password to use for authenticating against the broker. 
+    {%-endif%}
+     */
     {{Name}}BrokerConnection(
     {%-if server.TryGetBinding('clientId') is none%}const std::string& clientId{%endif%}
     {%-for p in server.GetUrl()['parameters'] %}
@@ -47,15 +60,36 @@ public:
     {%-endif%});
     virtual ~{{Name}}BrokerConnection();
 
+    /*! Publish a message to the MQTT broker.
+     * \param topic the topic of the message.
+     * \param payload is the payload body of the message.
+     * \param qos the MQTT quality of service value between 0 and 2 inclusive.
+     * \param retain an indicator that the MQTT broker should retain the message.
+     */
     virtual void Publish(const std::string& topic, const std::string& payload, unsigned qos, bool retain);
 
+    /*! Subscribe to a topic.
+     * \param topic the subscription topic.
+     * \param qos an MQTT quality of service value between 0 and 2 inclusive.
+     */
     virtual void Subscribe(const std::string& topic, int qos);
 
+    /*! Add a function that is called on the receipt of a message.
+     * Many callbacks can be added, and each will be called in the order in which the callbacks were added.
+     * \param cb the callback function.
+     */
     virtual void AddMessageCallback(const std::function<void(const std::string&, const std::string&)>& cb);
 
+    /*! Determines if a topic string matches a subscription topic.
+     * \param topic a topic to match against a subscription.
+     * \param subscr the subscription topic string to match against.
+     * \return true if it is a match.
+     */
     virtual bool TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const;
 
 protected:
+    /*! Establishes the connection to the broker.
+     */
     virtual void Connect();
 
 

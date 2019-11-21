@@ -14,7 +14,7 @@ OPERATIONS={
         "id": "{{channelItem[operationType]['operationId']}}",
         "mqtt_action": "{{operationType}}",
         "topic": "{{topic}}",
-        "message": {{resolver.ClassName(channelItem[operationType]['message']['$ref'])}},
+        "message": {{resolver.py_class_name(channelItem[operationType]['message']['$ref'])}},
         {%-if channelItem[operationType].GetQoS()%}
         "qos": {{channelItem[operationType].GetQoS()}},
         {%-endif%}

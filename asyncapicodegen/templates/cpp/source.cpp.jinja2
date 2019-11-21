@@ -1,6 +1,6 @@
 {%include 'file_prologue.jinja2'%}
 {%-import 'loader.jinja2' as loader-%}
-{%-set className = resolver.ResolveNamespace(usings, ns, '::')+Name%}
+{%-set className = resolver.cpp_resolve_namespace(ns)+Name%}
 {%-import 'type_helpers.jinja2' as functions-%}
 #pragma once
 
@@ -48,7 +48,7 @@ constexpr char {{className}}::API_VERSION[];
     });
 }
 
-void {{className}}::SetLogCallback(const std::function<void({{className}}::LogLevel, std::string)>& cb)
+void {{className}}::SetLogCallback(const std::function<void({{className}}::LogLevel lvl, const std::string& msg)>& cb)
 {
     _log = cb;
 }
@@ -77,7 +77,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
             {%-for pp in channelItem.GetPathParts()%}
             {%-if pp[0] == '{' and pp[-1] == '}'%}
             {%-set paramName %}{{pp |strip('{}')}}{%endset%}
-            {%-set paramType = channelItem.parameters[paramName].GetType(resolver, namespace, usings) %}
+            {%-set paramType = channelItem.parameters[paramName].GetType(resolver) %}
             {%-if paramType in ['int', 'float', 'bool']%}
             {{paramType}} {{paramName}} =  boost::lexical_cast<{{paramType}}>(parts[{{loop.index-1}}]);
             {%-elif 'string' in paramType%}
@@ -111,7 +111,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
                     Log("Could not JSON parse {{operation.operationId}} payload.");
                 }
 
-                {{operation.GetMessageType(resolver, ns, usings)}} inMsg = {{operation.GetMessageType(resolver, ns, usings)}}::FromJson(doc);
+                {{operation.GetMessageType(resolver)}} inMsg = {{operation.GetMessageType(resolver)}}::FromJson(doc);
 
                 {%-if operation.GetRetain() == true%}
                 {%-if channelItem.parameters | length == 0 %}
@@ -126,7 +126,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
 
                 if ({{ callbackFuncName }})
                 {
-                    {{ callbackFuncName }}({{-channelItem.CppParamList(resolver, ns, usings, types=False, append=', ')-}}inMsg);
+                    {{ callbackFuncName }}({{-channelItem.CppParamList(resolver, types=False, append=', ')-}}inMsg);
                 }
 
             }
@@ -145,7 +145,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
             }
             else
             {
-                Log("Could not create {{operation.GetMessageType(resolver, ns, usings)}} object from payload published at {{channelPath}}");
+                Log("Could not create {{operation.GetMessageType(resolver)}} object from payload published at {{channelPath}}");
             }
         }
     }
@@ -169,9 +169,9 @@ std::string topicStr("{{ channelPath }}");
 {%-endmacro%}
 
 void {{className}}::{{operation.operationId | PascalCase}}(
-    {{-channelItem.CppParamList(resolver, ns, usings)-}}
+    {{-channelItem.CppParamList(resolver)-}}
     {%-if channelItem.parameters |length > 0%}, {%endif-%}
-    const {{operation.GetMessageType(resolver, ns, usings)}}& msg
+    const {{operation.GetMessageType(resolver)}}& msg
     {{-operation.CppAdditionalMqttParams()}})
 {
     {%-set qos = operation.GetQoS() or 'qos' %}
@@ -186,7 +186,7 @@ void {{className}}::{{operation.operationId | PascalCase}}(
 }
 
 {%if operation.GetRetain() != false %}
-void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}{{-operation.CppAdditionalMqttParams(['qos'])}})
+void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}{{-operation.CppAdditionalMqttParams(['qos'])}})
 {
     {%- set qos = operation.GetQoS() or 'qos' %}
     {{-TopicString(channelItem, operation) |indent(4)}}
@@ -200,7 +200,7 @@ void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.C
 {%-set operation = channelItem.subscribe %}
 
 void {{className}}::Register{{operation.operationId | PascalCase}}Callbacks({{-''-}}
-    const {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}}& cb, {{''-}}
+    const {{functions.SubscribeCallback(resolver, channelItem)}}& cb, {{''-}}
     const ErrorCallback& errCb)
 {
     _{{operation.operationId | camelCase }}Callback = cb;
@@ -213,18 +213,18 @@ void {{className}}::Register{{operation.operationId | PascalCase}}Callbacks({{-'
 
 {%-if operation.GetRetain() != false %}
     
-boost::optional<{{operation.GetMessageType(resolver, ns, usings)}}> {{className}}::GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}) const
+boost::optional<{{operation.GetMessageType(resolver)}}> {{className}}::GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}) const
 {
     {%-if channelItem.parameters | length == 0 %}
     return _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
-    auto found = _last{{operation.operationId | PascalCase }}Values.find("{{channelItem.Parameters()[0].name}}");
+    auto found = _last{{operation.operationId | PascalCase }}Values.find("{{channelItem.GetPathParameters()[0].name}}");
     if (found)
     {
         return *found;
     }
     return boost::none;
-    return _last{{operation.operationId | PascalCase }}Values["{{channelItem.Parameters()[0].name}}"]; 
+    return _last{{operation.operationId | PascalCase }}Values["{{channelItem.GetPathParameters()[0].name}}"]; 
     {%-else%}
     {{functions.ParamHash(channelItem.Parameters())}}
     auto found = _last{{operation.operationId | PascalCase }}Values.find(seed);

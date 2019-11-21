@@ -7,7 +7,7 @@ namespace {{n}} {
 {%endfor%}
 
 {%-if '$ref' in message.schema %}
-{%set schemaName%}{{resolver.GetNamespace()}}{%endset%}
+FIXME
 {%-else%}{#Message schema is defined directly#}
 {%set schemaName%}{{message.name|PascalCase}}Schema{%endset%}
 namespace {

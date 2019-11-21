@@ -5,21 +5,10 @@ import yaml
 from . import templator
 from . import specwrapper
 import jsonschemacodegen.python
+import jsonschemacodegen.resolver
 
-class SimpleResolver(jsonschemacodegen.python.SimpleResolver):
-    
-    class Loader(object):
-        
-        def Load(self, uri):
-            assert('yaml' in uri or 'yml' in uri), "Only YAML is supported at this time"
-            with open(uri) as fp:
-                spec = yaml.load(fp, Loader=yaml.FullLoader)
-            return specwrapper.SpecRoot(spec, self)
-
-    def __init__(self, loader=None):
-        loader = (loader is not None) and loader or self.Loader()
-        super().__init__(loader=loader)
-
+class SimpleResolver(jsonschemacodegen.resolver.SimpleResolver):
+    pass
 
 class GeneratorFromAsyncApi(object):
 
@@ -36,7 +25,7 @@ class GeneratorFromAsyncApi(object):
         for name, obj in spec['components'][itemType].items():
             ref = pathBase % (itemType, name)
             print("Generating for %s" % (ref))
-            fileBase = self.resolver.FileName(ref)
+            fileBase = self.resolver.py_filename(ref).rstrip('.py')
             schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
             output = schemaGenerator.Generate(getSchemaFunc(obj), stringcase.pascalcase(name), fileBase)
             files.append(output)
@@ -44,7 +33,7 @@ class GeneratorFromAsyncApi(object):
 
     def Generate(self, spec, class_name, filename_base):
         assert(isinstance(spec, dict))
-        wrappedSpec = specwrapper.SpecRoot(spec, self.resolver.loader)
+        wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)
 
         self.GenerateSchemasForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
         self.GenerateSchemasForType(wrappedSpec, 'schemas', lambda obj: obj)

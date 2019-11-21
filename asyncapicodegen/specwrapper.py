@@ -19,14 +19,14 @@ class Parameter(BaseDict):
         if 'schema' in self.data and 'description' not in self.data['schema'] and 'description' in self.data:
             self.data['schema']['description'] = self.data['description']
 
-    def GetType(self, resolver, namespace, usings):
+    def GetType(self, resolver):
         if '$ref' in self.data:
-            return resolver.GetNamespace(self.data['$ref'], usings, '::')+resolver.GetName(self.data['$ref'])
+            return resolver.cpp_get_ns_name(self.data['$ref'])
         elif 'schema' in self.data and 'type' in self.data['schema']:
             if self.data['schema']['type'] == 'integer':
                 return 'int'
             elif self.data['schema']['type'] == 'string' and 'enum' not in self.data:
-                return resolver.ResolveNamespace(usings, ['std'], '::')+'string'
+                return resolver.cpp_resolve_namespace(['std'])+'string'
             elif self.data['schema']['type'] == 'boolean':
                 return 'bool'
         raise NotImplementedError
@@ -56,11 +56,11 @@ class Operation(BaseDict):
         if 'bindings' in self.data and '$ref' in self.data['bindings']:
             self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
 
-    def GetMessageType(self, resolver, namespace, usings):
+    def GetMessageType(self, resolver):
         """ TODO: Rename this to Cpp
         """
         if 'message' in self.data and '$ref' in self.data['message']:
-            return resolver.GetNamespace(self.data['message']['$ref'], usings, '::')+resolver.GetName(self.data['message']['$ref'])
+            return resolver.cpp_get_ns_name(self.data['message']['$ref'])
         else:
             print (self.data)
             raise NotImplementedError
@@ -113,13 +113,13 @@ class ChannelItem(BaseDict):
         super().__init__(root, initialdata)
         self.channelPath = channelPath
 
-    def CppParamList(self, resolver, namespace, usings, names=True, types=True, constRef=True, prepend='', append=''):
+    def CppParamList(self, resolver, names=True, types=True, constRef=True, prepend='', append=''):
         params = []
         try:
             prepend = len(self.data['parameters']) > 0 and prepend or ''
             append = len(self.data['parameters']) > 0 and append or ''
             for paramName, paramObj in self.data['parameters'].items():
-                params.append((stringcase.camelcase(paramName), paramObj.GetType(resolver, namespace, usings)))
+                params.append((stringcase.camelcase(paramName), paramObj.GetType(resolver)))
         except KeyError:
             append = ''
             prepend = ''
@@ -192,12 +192,12 @@ class Channels(BaseDict):
         params = self.GetAllParameters()
         for p in params:
             if '$ref' in p[1]:
-                deps.add('"%s"' % (resolver.GetHeader(p[1]['$ref'])))
+                deps.add('"{}"'.format(resolver.cpp_get_header(p[1]['$ref'])))
         for chItem in self.data.values():
             for op in ['subscribe', 'publish']:
                 if op in chItem:
                     if '$ref' in chItem[op]['message']:
-                        deps.add('"%s"' % (resolver.GetHeader(chItem[op]['message']['$ref'])))
+                        deps.add('"%s"' % (resolver.cpp_get_header(chItem[op]['message']['$ref'])))
         return deps
 
     def PyGetIncludes(self, resolver):
@@ -206,7 +206,7 @@ class Channels(BaseDict):
             for op in ['subscribe', 'publish']:
                 if op in chItem:
                     if '$ref' in chItem[op]['message']:
-                        deps.add(resolver.IncludeStatement(chItem[op]['message']['$ref']))
+                        deps.add(resolver.py_include_statement(chItem[op]['message']['$ref']))
         return deps
 
 class ServerObject(BaseDict):
@@ -292,9 +292,9 @@ class Components(BaseDict):
 
 class SpecRoot(BaseDict):
     
-    def __init__(self, initialdata, loader=None):
+    def __init__(self, initialdata, resolver=None):
         super().__init__(self, initialdata)
-        self.loader = loader
+        self.resolver = resolver
 
         if self.data['asyncapi'] != '2.0.0':
             raise NotImplementedError
@@ -309,18 +309,27 @@ class SpecRoot(BaseDict):
             self.data['servers'] = Servers(self, self.data['servers'])
 
     def Resolve(self, ref, asClass=None, **kwargs):
-        theFile, thePath = ref.split('#')
+        if len(ref.split('#')[0]) == 0:
+            otherRoot = self
+        else:
+            otherRoot = self.resolver.get_document(ref)
+        if asClass is not None:
+            return asClass(otherRoot, self.resolver.get_json(ref), **kwargs)
+        else:
+            return self.resolver.get_schema(ref)
+        """theFile, thePath = ref.split('#')
         if len(theFile) > 0:
-            if self.loader is not None:
-                otherRoot = self.loader.Load(theFile)
+            if self.resolver is not None:
+                otherRoot = self.resolver.get_schema(theFile)
                 struct = otherRoot.Resolve("#"+thePath)
                 if asClass is not None:
                     return asClass(otherRoot, struct, **kwargs)
                 return struct
-            raise NotImplementedError("No loader available for {}".format(theFile))
+            raise NotImplementedError("No resolver available for {}".format(theFile))
         else:
             pathParts = thePath.split('/')
             cur = self
             for part in [x for x in pathParts if x != '']:
                 cur = cur[part]
             return cur
+        """

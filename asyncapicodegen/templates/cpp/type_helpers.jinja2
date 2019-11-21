@@ -1,8 +1,8 @@
-{%macro SubscribeCallback(resolver, ns, usings, channelItem) -%}
+{%macro SubscribeCallback(resolver, channelItem) -%}
 {%-set operation = channelItem.subscribe -%}
-std::function<void({{channelItem.CppParamList(resolver, ns, usings)-}}
+std::function<void({{channelItem.CppParamList(resolver)-}}
 {%-if channelItem.parameters |length > 0%}, {%endif-%}
-const {{operation.GetMessageType(resolver, ns, usings)}}& msg)>
+const {{operation.GetMessageType(resolver)}}& msg)>
 {%-endmacro-%}
 
 {%-macro ServerUriVarType(varName, varDef)-%}

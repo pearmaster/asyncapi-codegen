@@ -1,6 +1,6 @@
 {%-import 'type_helpers.jinja2' as helpers%}
 {%-include 'file_prologue.jinja2'%}
-{%-set className = resolver.ResolveNamespace(usings, ns)+Name+'BrokerConnection'%}
+{%-set className = resolver.cpp_resolve_namespace(ns, append='')+Name+'BrokerConnection'%}
 
 #include <exception>
 #include <string>
@@ -15,7 +15,7 @@
 #include "{{inc}}"
 {%-endfor%}
 
-{%for using in usings%}
+{%for using in resolver.cpp_get_usings()%}
 using namespace {{using | join ("::")}};
 {%-endfor%}
 

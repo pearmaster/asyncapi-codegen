@@ -27,7 +27,7 @@
 namespace {{n}} {
 {%endfor%}
 
-using ErrorCallback = std::function<void(const std::string& topic, const rapidjson::Value& json, const std::exception& err)>;
+
 
 /*! {{spec.title}}
  * \class {{Name}}
@@ -36,13 +36,28 @@ using ErrorCallback = std::function<void(const std::string& topic, const rapidjs
 class {{Name}}
 {
 public:
-    {%-if spec.id%}
+
+    /*! ErrorCallback format.
+     * \typedef std::function<void(const std::string& topic, const rapidjson::Value& json, const std::exception& err)> ErrorCallback
+     * \tparam topic MQTT topic for the message that caused the error
+     * \tparam json Parsed JSON from the message (non-JSON messages are completely discarded)
+     * \tparam err Exception caught that triggered the error callback.
+     */
+    typedef std::function<void(const std::string& topic, const rapidjson::Value& json, const std::exception& err)> ErrorCallback;
+
+    {%if spec.id%}
+    /*! A unique ID for the API specification.
+     */
     static constexpr char API_ID[] = "{{spec.id}}";
     {%-endif%}
-    {%-if spec.info.title%}
+    {%if spec.info.title%}
+    /*! The title of the API.
+     */
     static constexpr char API_TITLE[] = "{{spec.info.title}}";
     {%-endif%}
-    {%-if spec.info.title%}
+    {%if spec.info.title%}
+    /*! The version of the API specification.
+     */
     static constexpr char API_VERSION[] = "{{spec.info.version}}";
     {%-endif%}
 
@@ -57,6 +72,8 @@ public:
     {%-endif%}
     {%-endfor%}
 
+    /*! The severity of a log message.
+     */
     enum class LogLevel
     {
         ERROR,
@@ -67,7 +84,7 @@ public:
     };
 
     /*! Constructor.
-     * 
+     * \param broker a broker connection object.
      */
     {{Name}}(std::shared_ptr<IBrokerConnection> broker);
     
@@ -75,8 +92,21 @@ public:
      */
     virtual ~{{Name}}() = default;
 
-    void SetLogCallback(const std::function<void(LogLevel, std::string)>& cb);
+    /*! When a {{Name}} instance logs a message, it will call this callback.
+     * Only one callback can be set at a time.  The last callback set will be the one to receive logging messages.
+     * \param cb the function to be called every time a message is logged.
+     * \tparam lvl The severity of the log message.
+     * \tparam msg A string containing the log message.
+     */
+    void SetLogCallback(const std::function<void(LogLevel lvl, const std::string& msg)>& cb);
 
+    /*! This is a method called by the broker connection on every received message.
+     * On the construction of {{Name}}, the ReceiveMessage method is registered
+     * with the IBrokerConnection broker connection.  It is thus called on the receipt
+     * of every message from the broker.
+     * \param topic The MQTT topic that was used for the published topic.
+     * \param payload The MQTT message payload.
+     */
     void ReceiveMessage(const std::string& topic, const std::string& payload);
 
     {%for channelPath, channelItem in spec.channels.items() %}
@@ -90,24 +120,24 @@ public:
      * {{operation.description}}
      {%-endif%}
      {%-for paramName, paramItem in channelItem.Parameters().items() %}
-     * \param {{paramItem.GetType(resolver, ns, usings)}} {{paramName}}
+     * \param {{paramItem.GetType(resolver)}} {{paramName}}
      {%-endfor %}
-     * \param {{operation.GetMessageType(resolver, ns, usings)}} msg
+     * \param {{operation.GetMessageType(resolver)}} msg
      */
     void {{operation.operationId | PascalCase}}(
-        {{-channelItem.CppParamList(resolver, ns, usings, append=', ')-}}
-        const {{operation.GetMessageType(resolver, ns, usings)}}& msg
+        {{-channelItem.CppParamList(resolver, append=', ')-}}
+        const {{operation.GetMessageType(resolver)}}& msg
         {{-operation.CppAdditionalMqttParams()}});
 
     {%if operation.GetRetain() != false %}
     /*! Publishes to '{{channelPath}}' with an empty payload.
      * With MQTT (and perhaps other frameworks) a message that is retained on the broker may be cleared if a null payload is published.  This function provides that functionality.
-     * \fn void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}});
+     * \fn void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}});
      {%-for paramName, paramItem in channelItem.Parameters().items() %}
-     * \param {{paramItem.GetType(resolver, ns, usings)}} {{paramName}} 
+     * \param {{paramItem.GetType(resolver)}} {{paramName}} 
      {%-endfor %}
      */
-    void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}{{-operation.CppAdditionalMqttParams(['qos'])}});
+    void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}{{-operation.CppAdditionalMqttParams(['qos'])}});
     {%endif%}
     {%endif%}
 
@@ -116,24 +146,30 @@ public:
     {%-set operation = channelItem.subscribe %}
 
     /*! {{operation.summary}}
-     * Register callbacks for messages to '{{channelPath}}''
+     * Register callbacks for messages to '{{channelPath}}'
      {%-if operation.description %}
      * {{operation.description}}
      {%-endif%}
+     * \param cb Function object (callback) that will be called on successful receipt of messages.
+     * \param errCb Function object (callback) that will be called when a message's content violates the schema.
      */
     void Register{{operation.operationId | PascalCase}}Callbacks({{-''-}}
-        const {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}}& cb, {{''-}}
+        const {{functions.SubscribeCallback(resolver, channelItem)}}& cb, {{''-}}
         const ErrorCallback& errCb);
 
     {%-if operation.GetRetain() != false %}
 
-    boost::optional<{{operation.GetMessageType(resolver, ns, usings)}}> GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver, ns, usings)-}}) const;
+    /*! Gets the last message published to '{{channelPath}}'
+     */
+    boost::optional<{{operation.GetMessageType(resolver)}}> GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}) const;
     {%-endif%}
 
     {%-endif%} {# subscribe topics #}
     {%-endfor%}
 
 protected:
+    /*! Protected method for causing a message to be sent to the logging mechanism.
+     */
     void Log(const std::string& msg);
 
 private:
@@ -144,15 +180,15 @@ private:
     {%for channelPath, channelItem in spec.channels.items() -%}
     {%if 'subscribe' in channelItem %}
     {%-set operation = channelItem.subscribe %}
-    {{functions.SubscribeCallback(resolver, ns, usings, channelItem)}} _{{operation.operationId | camelCase }}Callback;
+    {{functions.SubscribeCallback(resolver, channelItem)}} _{{operation.operationId | camelCase }}Callback;
     ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
     {%-if operation.GetRetain() == true%}
     {%-if channelItem.parameters | length == 0 %}
-    boost::optional<{{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Value;
+    boost::optional<{{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
-    std::map<{{channelItem.Parameters()[0].GetType(resolver, ns, usings)}}, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Values;
+    std::map<{{channelItem.Parameters()[0].GetType(resolver)}}, {{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-else%}
-    std::map<std::size_t, {{operation.GetMessageType(resolver, ns, usings)}}> _last{{operation.operationId | PascalCase }}Values;
+    std::map<std::size_t, {{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-endif%}
     {%-endif%}{#retained false#}
     {%-endif%}
