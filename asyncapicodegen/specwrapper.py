@@ -7,6 +7,7 @@ import json
 class BaseDict(collections.UserDict):
 
     def __init__(self, root, initialdata):
+        assert(isinstance(root, SpecRoot))
         super().__init__(initialdata)
         self.root = root
 
@@ -51,8 +52,8 @@ class Operation(BaseDict):
                 if '$ref' in trait:
                     trait = self.root.Resolve(trait['$ref'], Trait)
                 for k, v in trait.items():
-                    if k not in ['message', 'traits']:
-                        self.data[k] = v
+                    assert(k not in ['message', 'traits'])
+                    self.data[k] = v
         if 'bindings' in self.data and '$ref' in self.data['bindings']:
             self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
 
@@ -107,7 +108,7 @@ class ChannelItem(BaseDict):
         if 'publish' in initialdata:
             initialdata['publish'] = Operation(root, 'publish', initialdata['publish'])
         if 'subscribe' in initialdata:
-            initialdata['subscribe'] = Operation(root, 'publish', initialdata['subscribe'])
+            initialdata['subscribe'] = Operation(root, 'subscribe', initialdata['subscribe'])
         if 'parameters' in initialdata:
             for pName, pObj in initialdata['parameters'].items():
                 initialdata['parameters'][pName] = Parameter(root, pName, pObj)
@@ -265,14 +266,27 @@ class ServerObject(BaseDict):
         return False
 
 
+class Binding(BaseDict):
+    def __init__(self, root, initialdata, name=None):
+        super().__init__(root, initialdata)
+        self.name = name
+        if '$ref' in self.data:
+            self.data = self.root.Resolve(self.data['$ref'], Binding)
+
+    def __repr__(self):
+        return "Binding<{}>".format(self.name)
+
 class Trait(BaseDict):
 
-    def __init__(self, root, initialdata):
+    def __init__(self, root, initialdata, name=None):
         super().__init__(root, initialdata)
+        self.name = name
 
         if 'bindings' in initialdata and '$ref' in initialdata['bindings']:
-            self.data['bindings'] = self.root.Resolve(initialdata['bindings']['$ref'])
+            self.data['bindings'] = self.root.Resolve(initialdata['bindings']['$ref'], Binding, name=initialdata['bindings']['$ref'])
 
+    def __repr__(self):
+        return "Trait<{}>".format(self.name)
 
 class Servers(BaseDict):
 
@@ -294,9 +308,10 @@ class Components(BaseDict):
 
 class SpecRoot(BaseDict):
     
-    def __init__(self, initialdata, resolver=None):
+    def __init__(self, initialdata, resolver=None, name=None):
         super().__init__(self, initialdata)
         self.resolver = resolver
+        self.name = name
 
         if self.data['asyncapi'] != '2.0.0':
             raise NotImplementedError
@@ -314,24 +329,13 @@ class SpecRoot(BaseDict):
         if len(ref.split('#')[0]) == 0:
             otherRoot = self
         else:
-            otherRoot = self.resolver.get_document(ref)
+            otherRoot = SpecRoot(self.resolver.get_document(ref), self.resolver, name=ref.split('#')[0])
         if asClass is not None:
-            return asClass(otherRoot, self.resolver.get_json(ref), **kwargs)
+            theJson = otherRoot.resolver.get_json(ref, root=otherRoot)
+            inst = asClass(otherRoot, theJson, **kwargs)
+            return inst
         else:
             return self.resolver.get_schema(ref)
-        """theFile, thePath = ref.split('#')
-        if len(theFile) > 0:
-            if self.resolver is not None:
-                otherRoot = self.resolver.get_schema(theFile)
-                struct = otherRoot.Resolve("#"+thePath)
-                if asClass is not None:
-                    return asClass(otherRoot, struct, **kwargs)
-                return struct
-            raise NotImplementedError("No resolver available for {}".format(theFile))
-        else:
-            pathParts = thePath.split('/')
-            cur = self
-            for part in [x for x in pathParts if x != '']:
-                cur = cur[part]
-            return cur
-        """
+
+    def __repr__(self):
+        return "Spec<{}>".format(self.name)
