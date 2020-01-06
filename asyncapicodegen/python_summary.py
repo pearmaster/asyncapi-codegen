@@ -24,7 +24,9 @@ class GeneratorFromAsyncApi(object):
             return files
         for name, obj in spec['components'][itemType].items():
             ref = pathBase % (itemType, name)
-            fileBase = self.resolver.py_filename(ref).rstrip('.py')
+            fileBase = self.resolver.py_filename(ref)
+            if fileBase.endswith(".py"):
+                fileBase = fileBase[:-3]
             schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
             output = schemaGenerator.Generate(getSchemaFunc(obj), stringcase.pascalcase(name), fileBase)
             files.append(output)

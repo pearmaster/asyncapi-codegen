@@ -1,4 +1,4 @@
-import asyncapicodegen.python_summary as pygen
+import asyncapicodegen.python_client as pygen
 import sys
 import yaml
 import stringcase

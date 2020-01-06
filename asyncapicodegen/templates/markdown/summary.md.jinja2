@@ -1,3 +1,8 @@
+{%-macro ParamList(ch)-%}
+{%-for paramName, paramObj in ch.Parameters().items()-%}
+ * **{{paramName}}** {%if paramObj.GetEnglishType(resolver) %}is a *{{paramObj.GetEnglishType(resolver)}}*{%endif%}
+{%endfor-%}
+{%-endmacro-%}
 {%-set client = spec['x-client-role'] or 'client'%}
 # MQTT _Summary_ of {{ spec.info.title }} {{client |PascalCase}}
 *Version {{ spec.info.version }}*
@@ -8,10 +13,11 @@
 {%for ch in spec.channels.values() if 'publish' in ch%}
 {%-set op = ch.publish %}
 ### {{op.summary or ch.operationId}}
+###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 
-#### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
-
+##### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
+{{ParamList(ch)}}
 ##### Examples:
 
 {%-for ex in op.Examples(resolver) |sort(reverse=True)%}
@@ -26,9 +32,11 @@
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}
 ### {{op.summary or ch.operationId}}
+###### ID: `{{op.operationId}}`
 {{op.description}}
 
-#### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
+##### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
+{{ParamList(ch)}}
 {%-if ch.GetPathParameters() | length > 0 %}
 The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
 {%-endif%} {#has params#}

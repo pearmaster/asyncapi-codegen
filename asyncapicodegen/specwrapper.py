@@ -14,7 +14,7 @@ class BaseDict(collections.UserDict):
 
 class Parameter(BaseDict):
 
-    def __init__(self, root, name, initialdata):
+    def __init__(self, root, initialdata, name):
         super().__init__(root, initialdata)
         self.name = name
         if 'schema' in self.data and 'description' not in self.data['schema'] and 'description' in self.data:
@@ -31,6 +31,33 @@ class Parameter(BaseDict):
             elif self.data['schema']['type'] == 'boolean':
                 return 'bool'
         raise NotImplementedError
+
+    def GetEnglishType(self, resolver):
+        thedata = self.data
+        if '$ref' in self.data:
+            param = self.root.Resolve(self.data['$ref'], Parameter, name=self.name)
+            engType = param.GetEnglishType(resolver)
+            return engType
+        assert('schema' in thedata)
+
+        def GetEnglishTypeForSchema(root, resolver, sch):
+            schema = sch
+            if '$ref' in schema:
+                schema = root.Resolve(schema['$ref'])
+            if 'enum' in schema:
+                return " OR ".join(['"{}"'.format(e) for e in schema['enum']])
+            if 'type' in schema:
+                return schema['type']
+            if 'oneOf' in schema:
+                try:
+                    alternatives = set([GetEnglishTypeForSchema(root, resolver, s) for s in schema['oneOf']])
+                except:
+                    return ""
+                return " OR ".join([ "[{}]".format(a) for a in alternatives])
+            return schema
+        
+        engType = GetEnglishTypeForSchema(self.root, resolver, thedata['schema'])
+        return engType
 
     def __hash__(self):
         if '$ref' in self.data:
@@ -74,24 +101,28 @@ class Operation(BaseDict):
             except KeyError:
                 doc = self.root
             message_json = resolver.get_json(self.data['message']['$ref'], doc)
-            examples = generator.Generate(doc, message_json['payload'])
+            try:
+                examples = generator.Generate(doc, message_json['payload'])
+            except KeyError as e:
+                print("Couldn't find 'payload' in {}".format(message_json))
+                raise e
         else:
             examples = generator.Generate(self.root, self.data['message']['payload'])
         exampleList = [json.dumps(ex, indent=2, sort_keys=True) for ex in examples]
         sorted(exampleList, reverse=True)
         return exampleList
 
-    def GetQoS(self):
+    def GetQoS(self, default=None):
         try:
             return int(self.data['bindings']['mqtt']['qos'])
         except:
-            return None
+            return default
 
-    def GetRetain(self):
+    def GetRetain(self, default=None):
         try:
             return bool(self.data['bindings']['mqtt']['retain'])
         except:
-            return None
+            return default
 
     def CppAdditionalMqttParams(self, including=['qos', 'retain']):
         ret = []
@@ -111,7 +142,7 @@ class ChannelItem(BaseDict):
             initialdata['subscribe'] = Operation(root, 'subscribe', initialdata['subscribe'])
         if 'parameters' in initialdata:
             for pName, pObj in initialdata['parameters'].items():
-                initialdata['parameters'][pName] = Parameter(root, pName, pObj)
+                initialdata['parameters'][pName] = Parameter(root, pObj, pName)
 
         super().__init__(root, initialdata)
         self.channelPath = channelPath
@@ -335,7 +366,7 @@ class SpecRoot(BaseDict):
             inst = asClass(otherRoot, theJson, **kwargs)
             return inst
         else:
-            return self.resolver.get_schema(ref)
+            return self.resolver.get_schema(ref, root=otherRoot)
 
     def __repr__(self):
         return "Spec<{}>".format(self.name)

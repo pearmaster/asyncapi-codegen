@@ -1,0 +1,110 @@
+import json
+import parse
+
+def ToJsonString(obj):
+    return json.dumps(obj, default=lambda x: x.Serializable())
+
+def TupleValuesFromDict(d):
+    values = []
+    for k in sorted(d.keys()):
+        values.append(d[k])
+    return tuple(values)
+{##}
+{%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
+{{inc}}
+{%-endfor%}
+
+
+class {{Name}}(object):
+
+    def __init__(self, client):
+        self._client = client
+        self._client.on_connect = self._on_connect
+        self._client.on_message = self._on_message
+        self._subscriptions = []
+
+    def _subscribe(self, topic, qos):
+        self._subscriptions.append((topic, qos))
+        try:
+            self._client.subscribe(topic, qos)
+        except:
+            pass
+
+    def _on_connect(self, client, userdata, flags, rc):
+        for sub in self._subscriptions:
+            client.subscribe(*sub)
+
+    def _on_message(self, client, userdata, msg):
+        return self.Receive(msg.topic, msg.payload)
+    
+    {##}
+    {%-for topic, channelItem in spec.channels.items()%}
+    {%-if 'publish' in channelItem %}
+    def {{channelItem['publish']['operationId'] | PascalCase }}(self, message{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
+        msg = {{resolver.py_class_name(channelItem['publish']['message']['$ref'])}}(message)
+        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p}}{%endfor%})
+        self._client.publish(topic, ToJsonString(msg), {{channelItem['publish'].GetQoS(default=2)}}, {{channelItem['publish'].GetRetain(default=False)}})
+    {%-if channelItem['publish'].GetRetain(default=False)%}
+
+    def Clear{{channelItem['publish']['operationId'] | PascalCase }}RetainedMessage(self{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
+        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p}}{%endfor%})
+        self._client.publish(topic, None, {{channelItem['publish'].GetQoS(default=2)}}, True)
+    {%-endif%}
+    {%-endif%}
+    {%if 'subscribe' in channelItem %}
+    def Set{{channelItem['subscribe']['operationId'] | PascalCase }}Callback(self, cb, errCb=None):
+        """ Sets the callback for the {{channelItem['subscribe']['operationId']}} operation.
+        Whenever a message is received from the "{{channelItem.GetSubscribePath()}}" topic, the provided
+        callback is called with the validated contents of the message.
+        If the message contents were not validated, then the error callback errCb is called instead.
+        """
+        self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback = cb
+        self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback = errCb
+        {%-if channelItem['subscribe'].GetRetain(default=False)%}
+        {%-if channelItem.parameters%}
+        self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values = dict()
+        {%-else%}
+        self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Value = None
+        {%-endif%}
+        {%-endif%} 
+        self._subscribe("{{channelItem.GetSubscribePath()}}", {{channelItem['subscribe'].GetQoS(default=1)}})
+    {%-if channelItem['subscribe'].GetRetain(default=False)%}
+
+    def GetLast{{channelItem['subscribe']['operationId'] | PascalCase }}(self{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
+        {%-if channelItem.parameters%}
+        return self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[({%for p in channelItem.parameters | sort%}{{p}}, {%endfor%})]
+        {%-else%}
+        return self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Value
+        {%-endif%}
+    {%-endif%}    
+    {%-endif%}
+    {%-endfor%}
+
+    def Receive(self, topic, payload):
+        try:
+            jsonObj = json.loads(payload)
+        except:
+            # Can't really do anything of meaning if the payload wasn't json
+            return
+        {%-for topicPattern, channelItem in spec.channels.items()%}
+        {%-if 'subscribe' in channelItem %}
+        if self._client.topic_matches_sub("{{channelItem.GetSubscribePath()}}", topic):
+            if self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback is not None:
+                try:
+                    msg = {{resolver.py_class_name(channelItem['subscribe']['message']['$ref'])}}(jsonObj)
+                    {%-if channelItem.parameters%}
+                    parsedParams = parse.parse("{{topicPattern}}", topic)
+                    {%-endif%}
+                    {%-if channelItem['subscribe'].GetRetain(default=False)%}
+                    {%-if channelItem.parameters%}
+                    self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[TupleValuesFromDic(parsedParams.named)] = msg
+                    {%-else%}
+                    self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Value = msg
+                    {%-endif%}
+                    {%-endif%}
+                    self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback(msg{%if channelItem.parameters%}, **parsedParams.named{%endif%})
+                except Exception as e:
+                    if self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback is not None:
+                        self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback(topic, payload, e)
+        {%-endif%}
+        {%-endfor%} 

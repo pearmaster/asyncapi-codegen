@@ -38,6 +38,11 @@ See also [requirements.txt](./requirements.txt)
 * json-schema-codegen
 * pyyaml
 
+### Python requirements for generated python code
+
+* python 3.7
+* parse
+* paho-mqtt
 
 ### C++ requirements for generated code
 
