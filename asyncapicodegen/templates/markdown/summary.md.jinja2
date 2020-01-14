@@ -1,5 +1,5 @@
 {%-macro ParamList(ch)-%}
-{%-for paramName, paramObj in ch.Parameters().items()-%}
+{%-for paramName, paramObj in ch.Parameters()-%}
  * **{{paramName}}** {%if paramObj.GetEnglishType(resolver) %}is a *{{paramObj.GetEnglishType(resolver)}}*{%endif%}
 {%endfor-%}
 {%-endmacro-%}
@@ -9,28 +9,58 @@
 
 {{spec.info.description}}
 
+{%-if spec.tags | length > 0%}
+## Tags
+{%for tag in spec.tags%}
+<a name="tag-{{tag.name}}"></a>
+##### {{tag.name}}
+{{tag.description}}
+{%-for ch in spec.channels.values() if 'publish' in ch%}
+{%-if ch.publish.HasTag(tag.name)%}
+ * [{{ch.publish.summary}}](#{{ch.publish.operationId}}) {{ch.publish.GetTagNote(tag.name)}}
+{%-endif%}
+{%-endfor%}
+{%-for ch in spec.channels.values() if 'subscribe' in ch%}
+{%-if ch.subscribe.HasTag(tag.name)%}
+ * [{{ch.subscribe.summary}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
+{%-endif%}
+{%-endfor%}
+{%endfor%}
+{%-endif%}
+
 ## {{client |PascalCase}} may publish...
 {%for ch in spec.channels.values() if 'publish' in ch%}
-{%-set op = ch.publish %}
+{%-set op = ch.publish %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or ch.operationId}}
 ###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 
 ##### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
-##### Examples:
-
+##### Message Payload:
+###### Message Name: `{{op.Message().name}}`
+###### Examples:
 {%-for ex in op.Examples(resolver) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```
 {%-endfor%} {#examples#}
+{%if op.tags | length > 0 %}
+##### Tags:
+{%-for tag in op.tags %}
+ * [{{tag.name}}](#tag-{{tag.name}}) {{op.GetTagNote(tag.name)}}
+{%-endfor%}
+{%endif%}
+{%-if 'x-test-description' in op %}
+##### Notes for test team
+{{op['x-test-description']}}
+{%endif%}
 ----
 {% endfor %} {#publish operations#}
 
 ## {{client |PascalCase}} may subscribe...
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
-{%-set op = ch.subscribe %}
+{%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or ch.operationId}}
 ###### ID: `{{op.operationId}}`
 {{op.description}}
@@ -41,12 +71,24 @@
 The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
 {%-endif%} {#has params#}
 
-##### Examples:
+##### Message Payload:
+###### Message Name: `{{op.Message().name}}`
+###### Examples:
 
 {%-for ex in op.Examples(resolver) |sort(reverse=True)%}
 ```json
 {{ex}}
 ```
 {%-endfor%} {#examples#}
+{%if op.tags | length > 0 %}
+##### Tags:
+{%-for tag in op.tags %}
+ * [{{tag.name}}](#tag-{{tag.name}}) {{op.GetTagNote(tag.name)}}
+{%-endfor%}
+{%endif%}
+{%-if 'x-test-description' in op %}
+##### Notes for test team
+{{op['x-test-description']}}
+{%endif%}
 ----
 {% endfor %} {#subscribe operations#}

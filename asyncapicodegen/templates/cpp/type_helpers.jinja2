@@ -15,7 +15,7 @@ std::string
 
 {%-macro ParamHash(parameters) %}
 std::size_t seed = 0;
-{%-for param in parameters%}
-boost::combine_hash(seed, {{param.name}});
+{%-for param, _ in parameters%}
+boost::hash_combine(seed, {{param}});
 {%-endfor%}
 {%-endmacro%}

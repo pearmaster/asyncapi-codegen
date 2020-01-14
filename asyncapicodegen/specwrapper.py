@@ -84,6 +84,13 @@ class Operation(BaseDict):
         if 'bindings' in self.data and '$ref' in self.data['bindings']:
             self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
 
+    def Message(self):
+        if 'message' in self.data:
+            if '$ref' in self.data['message']:
+                return self.root.Resolve(self.data['message']['$ref'], asClass=Message)
+            else:
+                return Message(self.root, self.data['message'])
+
     def GetMessageType(self, resolver):
         """ TODO: Rename this to Cpp
         """
@@ -123,6 +130,23 @@ class Operation(BaseDict):
             return bool(self.data['bindings']['mqtt']['retain'])
         except:
             return default
+
+    def HasTag(self, tagName):
+        if 'tags' in self.data:
+            for tag in self.data['tags']:
+                if tag['name'] == tagName:
+                    return True
+        return False
+
+    def GetTagNote(self, tagName):
+        if 'tags' in self.data:
+            for tag in self.data['tags']:
+                if tag['name'] == tagName:
+                    if 'x-note' in tag:
+                        return tag['x-note']
+                    if 'description' in tag:
+                        return tag['description']
+        return ''
 
     def CppAdditionalMqttParams(self, including=['qos', 'retain']):
         ret = []
@@ -190,7 +214,9 @@ class ChannelItem(BaseDict):
 
     def GetPathParameters(self):
         pattern = r"\{\w+\}"
-        return re.findall(pattern, self.channelPath)
+        results = re.findall(pattern, self.channelPath)
+        assert(len(results) == len(self.Parameters())), f"Mismatch of parameters from {self.GetName()}"
+        return results
 
     def GetSubscribePath(self):
         pattern = r"\{\w+\}"
@@ -201,7 +227,7 @@ class ChannelItem(BaseDict):
 
     def Parameters(self):
         if 'parameters' in self.data:
-            return self.data['parameters']
+            return [(k,v) for k,v in self.data['parameters'].items()]
         return {}
 
 
@@ -281,6 +307,7 @@ class ServerObject(BaseDict):
         except:
             return None
 
+    def IDontKnowWhatThisDeadCodeIs(self):
         if 'security' in self.data:
             for schemeName in self.data['security'].keys():
                 scheme = self.root['components']['securitySchemes'][schemeName]
@@ -305,7 +332,7 @@ class Binding(BaseDict):
             self.data = self.root.Resolve(self.data['$ref'], Binding)
 
     def __repr__(self):
-        return "Binding<{}>".format(self.name)
+        return f"Binding<{self.name}>}"
 
 class Trait(BaseDict):
 
@@ -331,11 +358,26 @@ class Servers(BaseDict):
                 pass
         super().__init__(root, newDict)
 
-class Components(BaseDict):
+
+class Message(BaseDict):
 
     def __init__(self, root, initialdata):
         super().__init__(root, initialdata)
 
+    def Schema(self):
+        assert('payload' in self.data['payload'])
+        if '$ref' in self.data['payload']:
+            return self.root.Resolve(self.data['payload']['$ref'])
+        return self.data['payload']
+
+
+class Components(BaseDict):
+
+    def __init__(self, root, initialdata):
+        super().__init__(root, initialdata)
+        if 'messages' in self.data:
+            for msgKey, msg in self.data['messages'].items():
+                self.data['messages'][msgKey] = Message(root, msg)
 
 class SpecRoot(BaseDict):
     

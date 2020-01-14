@@ -1,6 +1,6 @@
 {%-import 'type_helpers.jinja2' as helpers%}
 {%-include 'file_prologue.jinja2'%}
-{%-set className = resolver.cpp_resolve_namespace(ns, append='')+Name+'BrokerConnection'%}
+{%-set className = resolver.cpp_resolve_namespace(ns)+Name+'BrokerConnection'%}
 
 #include <exception>
 #include <string>

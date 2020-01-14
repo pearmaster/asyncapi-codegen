@@ -119,7 +119,7 @@ public:
      {%-if operation.description %}
      * {{operation.description}}
      {%-endif%}
-     {%-for paramName, paramItem in channelItem.Parameters().items() %}
+     {%-for paramName, paramItem in channelItem.Parameters() %}
      * \param {{paramItem.GetType(resolver)}} {{paramName}}
      {%-endfor %}
      * \param {{operation.GetMessageType(resolver)}} msg
@@ -129,15 +129,15 @@ public:
         const {{operation.GetMessageType(resolver)}}& msg
         {{-operation.CppAdditionalMqttParams()}});
 
-    {%if operation.GetRetain() != false %}
+    {%if operation.GetRetain(default=False) == True %}
     /*! Publishes to '{{channelPath}}' with an empty payload.
      * With MQTT (and perhaps other frameworks) a message that is retained on the broker may be cleared if a null payload is published.  This function provides that functionality.
      * \fn void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}});
-     {%-for paramName, paramItem in channelItem.Parameters().items() %}
+     {%-for paramName, paramItem in channelItem.Parameters() %}
      * \param {{paramItem.GetType(resolver)}} {{paramName}} 
      {%-endfor %}
      */
-    void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}{{-operation.CppAdditionalMqttParams(['qos'])}});
+    void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}});
     {%endif%}
     {%endif%}
 
@@ -157,7 +157,7 @@ public:
         const {{functions.SubscribeCallback(resolver, channelItem)}}& cb, {{''-}}
         const ErrorCallback& errCb);
 
-    {%-if operation.GetRetain() != false %}
+    {%-if operation.GetRetain(default=False) == true %}
 
     /*! Gets the last message published to '{{channelPath}}'
      */
@@ -182,15 +182,15 @@ private:
     {%-set operation = channelItem.subscribe %}
     {{functions.SubscribeCallback(resolver, channelItem)}} _{{operation.operationId | camelCase }}Callback;
     ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
-    {%-if operation.GetRetain() == true%}
+    {%-if operation.GetRetain(default=False) == true%}
     {%-if channelItem.parameters | length == 0 %}
     boost::optional<{{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
-    std::map<{{channelItem.Parameters()[0].GetType(resolver)}}, {{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Values;
+    std::map<{{channelItem.Parameters()[0][1].GetType(resolver)}}, {{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-else%}
     std::map<std::size_t, {{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Values;
     {%-endif%}
-    {%-endif%}{#retained false#}
+    {%-endif%}{#retained test#}
     {%-endif%}
     {%-endfor%}
 };

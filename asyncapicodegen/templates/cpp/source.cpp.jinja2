@@ -8,6 +8,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/functional/hash.hpp>
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
@@ -91,15 +92,15 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
             {##}
             {%-set callbackFuncName%}_{{operation.operationId | camelCase }}Callback{%endset%}
             {%-set callbackFuncNameErr%}_{{operation.operationId | camelCase }}ErrorCallback{%endset%}
-            {%-if operation.GetRetain() == true%}
+            {%-if operation.GetRetain(default=False) == True%}
             if (payload.empty())
             {
                 {%-if channelItem.parameters | length == 0 %}
                 _last{{operation.operationId | PascalCase }}Value = boost::none;
                 {%-elif channelItem.parameters | length == 1 %}
-                _last{{operation.operationId | PascalCase }}Values.erase({{channelItem.Parameters()[0].name}});
+                _last{{operation.operationId | PascalCase }}Values.erase({{channelItem.Parameters()[0][0]}});
                 {%-else%}
-                {{functions.ParamHash(channelItem.Parameters())}}
+                {{functions.ParamHash(channelItem.Parameters()) | indent(16)}}
                 _last{{operation.operationId | PascalCase }}Values.erase(seed);
                 {%-endif%}
             }
@@ -117,9 +118,9 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
                 {%-if channelItem.parameters | length == 0 %}
                 _last{{operation.operationId | PascalCase }}Value = inMsg;
                 {%-elif channelItem.parameters | length == 1 %}
-                _last{{operation.operationId | PascalCase }}Values["{{channelItem.Parameters()[0].name}}"] = inMsg; 
+                _last{{operation.operationId | PascalCase }}Values[{{channelItem.Parameters()[0][0]}}] = inMsg;
                 {%-else%}
-                {{functions.ParamHash(channelItem.Parameters())}}
+                {{functions.ParamHash(channelItem.Parameters()) | indent(16)}}
                 _last{{operation.operationId | PascalCase }}Values[seed] = inMsg;
                 {%-endif%}
                 {%-endif%} {#End if retain#}
@@ -161,7 +162,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
 {%-macro TopicString(channelItem, operation)%}
 {%-if channelItem.parameters | length > 0 %}
 std::stringstream ss;
-ss << boost::format("{{channelItem.GetPathAsBoostFormat()}}") % {{channelItem.GetPathParameters() | join(" % ") | strip("{}")}};
+ss << boost::format("{{channelItem.GetPathAsBoostFormat()}}") % {%for pp in channelItem.GetPathParameters()%}{%if not loop.first%} % {%endif%}{{pp|strip("{}")}}{%endfor%};
 std::string topicStr = ss.str();
 {%- else %}{# topic is plain string #}
 std::string topicStr("{{ channelPath }}");
@@ -185,7 +186,7 @@ void {{className}}::{{operation.operationId | PascalCase}}(
     _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}});
 }
 
-{%if operation.GetRetain() != false %}
+{%if operation.GetRetain(default=False) == True %}
 void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}{{-operation.CppAdditionalMqttParams(['qos'])}})
 {
     {%- set qos = operation.GetQoS() or 'qos' %}
@@ -207,26 +208,26 @@ void {{className}}::Register{{operation.operationId | PascalCase}}Callbacks({{-'
     _{{operation.operationId | camelCase }}ErrorCallback = errCb;
     if (_{{operation.operationId | camelCase }}Callback)
     {
-        _broker->Subscribe("{{channelItem.GetSubscribePath()}}", {{operation.GetQoS()}});
+        _broker->Subscribe("{{channelItem.GetSubscribePath()}}", {{operation.GetQoS(default=1)}});
     }
 }
 
-{%-if operation.GetRetain() != false %}
+{%-if operation.GetRetain(default=False) == True %}
     
 boost::optional<{{operation.GetMessageType(resolver)}}> {{className}}::GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}) const
 {
     {%-if channelItem.parameters | length == 0 %}
     return _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
-    auto found = _last{{operation.operationId | PascalCase }}Values.find("{{channelItem.GetPathParameters()[0].name}}");
-    if (found)
+    auto found = _last{{operation.operationId | PascalCase }}Values.find({{channelItem.Parameters()[0][0]}});
+    if (found != _last{{operation.operationId | PascalCase }}Values.end())
     {
-        return *found;
+        return found->second;
     }
     return boost::none;
-    return _last{{operation.operationId | PascalCase }}Values["{{channelItem.GetPathParameters()[0].name}}"]; 
+    {#return _last{{operation.operationId | PascalCase }}Values["{{channelItem.GetPathParameters().keys()[0]}}"];#}
     {%-else%}
-    {{functions.ParamHash(channelItem.Parameters())}}
+    {{functions.ParamHash(channelItem.Parameters()) | indent(4)}}
     auto found = _last{{operation.operationId | PascalCase }}Values.find(seed);
     if (found)
     {
