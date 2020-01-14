@@ -82,7 +82,7 @@ class Operation(BaseDict):
                     assert(k not in ['message', 'traits'])
                     self.data[k] = v
         if 'bindings' in self.data and '$ref' in self.data['bindings']:
-            self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'])
+            self.data['bindings'] = self.root.Resolve(self.data['bindings']['$ref'], Binding)
 
     def Message(self):
         if 'message' in self.data:
