@@ -57,7 +57,6 @@ class GeneratorFromAsyncApi(object):
         self.usings = src_usings
         self.resolver = resolver
 
-        self.resolver.cpp_set_root_namespace(namespace)
         for u in src_usings:
             self.resolver.cpp_add_using(u)
 
@@ -89,27 +88,28 @@ class GeneratorFromAsyncApi(object):
 
     def GenerateServers(self, spec, url):
         genFiles = GeneratedFiles()
-        for serverName, serverObj in spec['servers'].items():
-            path = "{}#/servers/{}".format(url, serverName)
-            headerFilename = self.resolver.cpp_get_header(path)
-            sourceFilename = "{}.cpp".format(self.resolver.cpp_get_filename_base(path))
-            name = stringcase.pascalcase(stringcase.snakecase(serverName))
-            self.srcGenerator.RenderTemplate("broker.cpp.jinja2", 
-                sourceFilename, 
-                usings=self.resolver.cpp_get_usings(),
-                ns=self.resolver.cpp_get_root_namespace(), 
-                resolver=self.resolver,
-                includes=[headerFilename],
-                Name=name,
-                server=serverObj)
-            genFiles += GeneratedFiles(cppFile=sourceFilename)
-            self.headerGenerator.RenderTemplate("broker.hpp.jinja2", 
-                headerFilename,
-                ns=self.namespace,
-                resolver=self.resolver,
-                Name=name,
-                server=serverObj)
-            genFiles += GeneratedFiles(hppFile=headerFilename)
+        if 'servers' in spec:
+            for serverName, serverObj in spec['servers'].items():
+                path = "{}#/servers/{}".format(url, serverName)
+                headerFilename = self.resolver.cpp_get_header(path)
+                sourceFilename = "{}.cpp".format(self.resolver.cpp_get_filename_base(path))
+                name = stringcase.pascalcase(stringcase.snakecase(serverName))
+                self.srcGenerator.RenderTemplate("broker.cpp.jinja2", 
+                    sourceFilename, 
+                    usings=self.resolver.cpp_get_usings(),
+                    ns=self.namespace, 
+                    resolver=self.resolver,
+                    includes=[headerFilename],
+                    Name=name,
+                    server=serverObj)
+                genFiles += GeneratedFiles(cppFile=sourceFilename)
+                self.headerGenerator.RenderTemplate("broker.hpp.jinja2", 
+                    headerFilename,
+                    ns=self.namespace,
+                    resolver=self.resolver,
+                    Name=name,
+                    server=serverObj)
+                genFiles += GeneratedFiles(hppFile=headerFilename)
         return genFiles
 
     def Generate(self, spec, class_name):
