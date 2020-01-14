@@ -45,7 +45,7 @@ class Parameter(BaseDict):
             if '$ref' in schema:
                 schema = root.Resolve(schema['$ref'])
             if 'enum' in schema:
-                return " OR ".join(['"{}"'.format(e) for e in schema['enum']])
+                return " OR ".join([f'"{e}"' for e in schema['enum']])
             if 'type' in schema:
                 return schema['type']
             if 'oneOf' in schema:
@@ -53,7 +53,7 @@ class Parameter(BaseDict):
                     alternatives = set([GetEnglishTypeForSchema(root, resolver, s) for s in schema['oneOf']])
                 except:
                     return ""
-                return " OR ".join([ "[{}]".format(a) for a in alternatives])
+                return " OR ".join([ f"[{a}]" for a in alternatives])
             return schema
         
         engType = GetEnglishTypeForSchema(self.root, resolver, thedata['schema'])
@@ -111,7 +111,7 @@ class Operation(BaseDict):
             try:
                 examples = generator.Generate(doc, message_json['payload'])
             except KeyError as e:
-                print("Couldn't find 'payload' in {}".format(message_json))
+                print(f"Couldn't find 'payload' in {message_json}")
                 raise e
         else:
             examples = generator.Generate(self.root, self.data['message']['payload'])
@@ -208,7 +208,7 @@ class ChannelItem(BaseDict):
         pattern = r"\{\w+\}"
         def repl(_):
             repl.i += 1
-            return "%{}%".format(repl.i)
+            return f"%{repl.i}%"
         repl.i = 0
         return re.sub(pattern, repl, self.channelPath)
 
@@ -276,7 +276,7 @@ class ServerObject(BaseDict):
         self.name = name
 
         if self.data['protocol'] != 'mqtt':
-            raise NotImplementedError("{} is not a supported protocol".format(self.data))
+            raise NotImplementedError(f"{self.data} is not a supported protocol")
         if 'protocolVersion' in self.data and self.data['protocolVersion'] != "3.1":
             raise NotImplementedError
 
@@ -332,7 +332,7 @@ class Binding(BaseDict):
             self.data = self.root.Resolve(self.data['$ref'], Binding)
 
     def __repr__(self):
-        return f"Binding<{self.name}>}"
+        return f"Binding<{self.name}>"
 
 class Trait(BaseDict):
 
@@ -344,7 +344,7 @@ class Trait(BaseDict):
             self.data['bindings'] = self.root.Resolve(initialdata['bindings']['$ref'], Binding, name=initialdata['bindings']['$ref'])
 
     def __repr__(self):
-        return "Trait<{}>".format(self.name)
+        return f"Trait<{self.name}>"
 
 class Servers(BaseDict):
 
@@ -411,4 +411,4 @@ class SpecRoot(BaseDict):
             return self.resolver.get_schema(ref, root=otherRoot)
 
     def __repr__(self):
-        return "Spec<{}>".format(self.name)
+        return f"Spec<{self.name}>"
