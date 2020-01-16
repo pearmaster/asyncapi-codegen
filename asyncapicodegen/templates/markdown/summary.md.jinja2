@@ -9,7 +9,7 @@
 
 {{spec.info.description}}
 
-{%-if spec.tags | length > 0%}
+{%-if spec.tags | length > 0 %}
 ## Tags
 {%for tag in spec.tags%}
 <a name="tag-{{tag.name}}"></a>
@@ -26,7 +26,7 @@
 {%-endif%}
 {%-endfor%}
 {%endfor%}
-{%-endif%}
+{%-endif%} {# end if spec.tags #}
 
 ## {{client |PascalCase}} may publish...
 {%for ch in spec.channels.values() if 'publish' in ch%}
@@ -37,22 +37,10 @@
 
 ##### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
-##### Message Payload:
-###### Message Name: `{{op.Message().name}}`
-<details>
-<summary>###### Examples:</summary>
-{%-for ex in op.Examples(resolver) |sort(reverse=True)%}
-```json
-{{ex}}
-```
-{%-endfor%} {#examples#}
-</details>
-{%if op.tags | length > 0 %}
-##### Tags:
-{%-for tag in op.tags %}
- * [{{tag.name}}](#tag-{{tag.name}}) {{op.GetTagNote(tag.name)}}
-{%-endfor%}
-{%endif%}
+
+{%include 'payload.md.jinja2'%}
+{%include 'examples.md.jinja2'%}
+{%include 'tags.md.jinja2'%}
 {%-if 'x-test-description' in op %}
 ##### Notes for test team
 {{op['x-test-description']}}
@@ -73,23 +61,9 @@
 The actual topic used for the MQTT subscription is `{{ch.GetSubscribePath()}}`
 {%-endif%} {#has params#}
 
-##### Message Payload:
-###### Message Name: `{{op.Message().name}}`
-<details>
-<summary>###### Examples:</summary>
-
-{%-for ex in op.Examples(resolver) |sort(reverse=True)%}
-```json
-{{ex}}
-```
-{%-endfor%} {#examples#}
-</details>
-{%if op.tags | length > 0 %}
-##### Tags:
-{%-for tag in op.tags %}
- * [{{tag.name}}](#tag-{{tag.name}}) {{op.GetTagNote(tag.name)}}
-{%-endfor%}
-{%endif%}
+{%include 'payload.md.jinja2'%}
+{%include 'examples.md.jinja2'%}
+{%include 'tags.md.jinja2'%}
 {%-if 'x-test-description' in op %}
 ##### Notes for test team
 {{op['x-test-description']}}

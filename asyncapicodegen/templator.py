@@ -73,6 +73,7 @@ class Generator(object):
                 jinja2.FileSystemLoader(searchpath="./templates/cpp"),
                 jinja2.PackageLoader('asyncapicodegen.templates.cpp', ''),
                 jinja2.PackageLoader('jsonschemacodegen.templates.cpp', ''),
+                jinja2.PackageLoader('jsonschemacodegen.templates.markdown', ''),
             ])
             env = jinja2.Environment(loader=loader)
             env.filters['UpperCamelCase'] = stringcase.pascalcase

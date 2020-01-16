@@ -1,0 +1,12 @@
+
+###### Examples
+
+<details>
+<summary>JSON Examples</summary>
+
+{%for ex in op.Examples(resolver) |sort(reverse=True)%}
+```json
+{{ex}}
+```
+{%-endfor%} {#examples#}
+</details>

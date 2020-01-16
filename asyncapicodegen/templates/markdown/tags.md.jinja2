@@ -1,0 +1,6 @@
+{%if op.tags | length > 0 %}
+##### Tags:
+{%-for tag in op.tags %}
+ * [{{tag.name}}](#tag-{{tag.name}}) {{op.GetTagNote(tag.name)}}
+{%-endfor%}
+{%endif%}
