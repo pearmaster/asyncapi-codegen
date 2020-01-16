@@ -2,6 +2,7 @@ import collections
 import stringcase
 import re
 from jsonschemacodegen import json_example
+from jsonschemacodegen.schemawrappers import SchemaFactory
 import json
 
 class BaseDict(collections.UserDict):
@@ -43,11 +44,11 @@ class Parameter(BaseDict):
         def GetEnglishTypeForSchema(root, resolver, sch):
             schema = sch
             if '$ref' in schema:
-                schema = root.Resolve(schema['$ref'])
+                schema = resolver.get_schema(schema['$ref'], hasattr(sch, 'root') and sch.root or root)
             if 'enum' in schema:
                 return " OR ".join([f'"{e}"' for e in schema['enum']])
             if 'type' in schema:
-                return schema['type']
+                return "{}{}".format(schema['type'], 'title' in schema and f" - {schema['title']}" or '')
             if 'oneOf' in schema:
                 try:
                     alternatives = set([GetEnglishTypeForSchema(root, resolver, s) for s in schema['oneOf']])
@@ -365,10 +366,10 @@ class Message(BaseDict):
         super().__init__(root, initialdata)
 
     def Schema(self):
-        assert('payload' in self.data['payload'])
+        assert('payload' in self.data)
         if '$ref' in self.data['payload']:
             return self.root.Resolve(self.data['payload']['$ref'])
-        return self.data['payload']
+        return SchemaFactory(self.data['payload'], self.root)
 
 
 class Components(BaseDict):
