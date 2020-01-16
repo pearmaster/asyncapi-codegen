@@ -1,4 +1,6 @@
-##### `{{op.Message().name}}` Message:
+##### {%if 'title' in op.Message()%}*{{op.Message().title}}*{%else%}*{{op.Message().name}}*{%endif%} Message:
+**ID**: `{{op.Message().name}}`
+{{op.Message().description}}
 <details>
 <summary>
 Payload: 
