@@ -7,7 +7,7 @@ with open("requirements.txt", "r") as fp:
     requirements = fp.read().split('\n')
 
 setup(name='asyncapi-codegen',
-      version='0.0.11',
+      version='0.0.13',
       url='http://github.com/pearmaster/asyncapi-codgen',
       author='Jacob Brunson',
       author_email='pypi@jacobbrunson.com',

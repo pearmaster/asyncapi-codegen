@@ -117,7 +117,9 @@ public:
     /*! {{operation.summary}}
      * Publishes to '{{channelPath}}'
      {%-if operation.description %}
-     * {{operation.description}}
+     *
+     {{operation.description |indent(5) }}
+     *
      {%-endif%}
      {%-for paramName, paramItem in channelItem.Parameters() %}
      * \param {{paramItem.GetType(resolver)}} {{paramName}}
@@ -148,7 +150,9 @@ public:
     /*! {{operation.summary}}
      * Register callbacks for messages to '{{channelPath}}'
      {%-if operation.description %}
-     * {{operation.description}}
+     *
+     {{operation.description | indent(5)}}
+     *
      {%-endif%}
      * \param cb Function object (callback) that will be called on successful receipt of messages.
      * \param errCb Function object (callback) that will be called when a message's content violates the schema.
