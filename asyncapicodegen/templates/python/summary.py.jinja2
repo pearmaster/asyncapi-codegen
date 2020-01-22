@@ -1,13 +1,12 @@
 import json
-
-def ToJsonString(obj):
-    return json.dumps(obj, default=lambda x: x.Serializable())
-{##}
 {%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
 {{inc}}
 {%-endfor%}
 
-OPERATIONS={
+def ToJsonString(obj):
+    return json.dumps(obj, default=lambda x: x.Serializable())
+
+OPERATIONS = {
 {%-for topic, channelItem in spec.channels.items()%}
     {%-set operationType = 'subscribe' in channelItem and 'subscribe' or 'publish'%}
     "{{channelItem[operationType]['operationId']}}": {
