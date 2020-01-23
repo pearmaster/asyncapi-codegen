@@ -40,26 +40,26 @@ class {{Name}}(object):
     {##}
     {%-for topic, channelItem in spec.channels.items()%}
     {%-if 'publish' in channelItem %}
-    def {{channelItem['publish']['operationId'] | PascalCase }}(self, message{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
+    def {{channelItem['publish']['operationId'] | PascalCase }}(self, message{%for p in channelItem.parameters%}, {{p | snake_case}}{%endfor%}):
         msg = {{resolver.py_class_name(channelItem['publish']['message']['$ref'])}}(message)
-        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p}}{%endfor%})
+        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p | snake_case}}{%endfor%})
         self._client.publish(topic, ToJsonString(msg), {{channelItem['publish'].GetQoS(default=2)}}, {{channelItem['publish'].GetRetain(default=False)}})
     {%-if channelItem['publish'].GetRetain(default=False)%}
 
-    def Clear{{channelItem['publish']['operationId'] | PascalCase }}RetainedMessage(self{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
-        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p}}{%endfor%})
+    def Clear{{channelItem['publish']['operationId'] | PascalCase }}RetainedMessage(self{%for p in channelItem.parameters%}, {{p | snake_case}}{%endfor%}):
+        topic = "{{topic}}".format({%for p in channelItem.parameters%}{%if not loop.first%}, {%endif%}{{p}}={{p | snake_case}}{%endfor%})
         self._client.publish(topic, None, {{channelItem['publish'].GetQoS(default=2)}}, True)
     {%-endif%}
     {%-endif%}
     {%if 'subscribe' in channelItem %}
-    def Set{{channelItem['subscribe']['operationId'] | PascalCase }}Callback(self, cb, errCb=None):
+    def Set{{channelItem['subscribe']['operationId'] | PascalCase }}Callback(self, cb, err_cb=None):
         """ Sets the callback for the {{channelItem['subscribe']['operationId']}} operation.
         Whenever a message is received from the "{{channelItem.GetSubscribePath()}}" topic, the provided
         callback is called with the validated contents of the message.
-        If the message contents were not validated, then the error callback errCb is called instead.
+        If the message contents were not validated, then the error callback err_cb is called instead.
         """
         self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback = cb
-        self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback = errCb
+        self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback = err_cb
         {%-if channelItem['subscribe'].GetRetain(default=False)%}
         {%-if channelItem.parameters%}
         self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values = dict()
@@ -70,9 +70,9 @@ class {{Name}}(object):
         self._subscribe("{{channelItem.GetSubscribePath()}}", {{channelItem['subscribe'].GetQoS(default=1)}})
     {%-if channelItem['subscribe'].GetRetain(default=False)%}
 
-    def GetLast{{channelItem['subscribe']['operationId'] | PascalCase }}(self{%for p in channelItem.parameters%}, {{p}}{%endfor%}):
+    def GetLast{{channelItem['subscribe']['operationId'] | PascalCase }}(self{%for p in channelItem.parameters%}, {{p | snake_case}}{%endfor%}):
         {%-if channelItem.parameters%}
-        return self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[({%for p in channelItem.parameters | sort%}{{p}}, {%endfor%})]
+        return self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[({%for p in channelItem.parameters | sort%}{{p | snake_case}}, {%endfor%})]
         {%-else%}
         return self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Value
         {%-endif%}
@@ -82,7 +82,7 @@ class {{Name}}(object):
 
     def Receive(self, topic, payload):
         try:
-            jsonObj = json.loads(payload)
+            json_obj = json.loads(payload)
         except:
             # Can't really do anything of meaning if the payload wasn't json
             return
@@ -91,18 +91,18 @@ class {{Name}}(object):
         if self._client.topic_matches_sub("{{channelItem.GetSubscribePath()}}", topic):
             if self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback is not None:
                 try:
-                    msg = {{resolver.py_class_name(channelItem['subscribe']['message']['$ref'])}}(jsonObj)
+                    msg = {{resolver.py_class_name(channelItem['subscribe']['message']['$ref'])}}(json_obj)
                     {%-if channelItem.parameters%}
-                    parsedParams = parse.parse("{{topicPattern}}", topic)
+                    parsed_params = parse.parse("{{topicPattern}}", topic)
                     {%-endif%}
                     {%-if channelItem['subscribe'].GetRetain(default=False)%}
                     {%-if channelItem.parameters%}
-                    self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[TupleValuesFromDic(parsedParams.named)] = msg
+                    self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Values[TupleValuesFromDict(parsed_params.named)] = msg
                     {%-else%}
                     self._last{{channelItem['subscribe']['operationId'] | PascalCase }}Value = msg
                     {%-endif%}
                     {%-endif%}
-                    self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback(msg{%if channelItem.parameters%}, **parsedParams.named{%endif%})
+                    self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback(msg{%if channelItem.parameters%}, **parsed_params.named{%endif%})
                 except Exception as e:
                     if self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback is not None:
                         self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback(topic, payload, e)
