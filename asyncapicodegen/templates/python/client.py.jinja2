@@ -1,5 +1,8 @@
 import json
 import parse
+{%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
+{{inc}}
+{%-endfor%}
 
 def ToJsonString(obj):
     return json.dumps(obj, default=lambda x: x.Serializable())
@@ -9,11 +12,6 @@ def TupleValuesFromDict(d):
     for k in sorted(d.keys()):
         values.append(d[k])
     return tuple(values)
-{##}
-{%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
-{{inc}}
-{%-endfor%}
-
 
 class {{Name}}(object):
 
@@ -36,7 +34,6 @@ class {{Name}}(object):
 
     def _on_message(self, client, userdata, msg):
         return self.Receive(msg.topic, msg.payload)
-    
     {##}
     {%-for topic, channelItem in spec.channels.items()%}
     {%-if 'publish' in channelItem %}
