@@ -225,13 +225,12 @@ boost::optional<{{operation.GetMessageType(resolver)}}> {{className}}::GetLast{{
         return found->second;
     }
     return boost::none;
-    {#return _last{{operation.operationId | PascalCase }}Values["{{channelItem.GetPathParameters().keys()[0]}}"];#}
     {%-else%}
     {{functions.ParamHash(channelItem.Parameters()) | indent(4)}}
     auto found = _last{{operation.operationId | PascalCase }}Values.find(seed);
-    if (found)
+    if (found != _last{{operation.operationId | PascalCase }}Values.end())
     {
-        return *found;
+        return found->second;
     }
     return boost::none;
     {%-endif%}
