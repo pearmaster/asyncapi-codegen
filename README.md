@@ -47,7 +47,7 @@ See also [requirements.txt](./requirements.txt)
 ### C++ requirements for generated code
 
 * boost (boost::optional and boost::variant among others)
-* rapidjson
+* rapidjson 1.1
 * C++11
 
 ## License
