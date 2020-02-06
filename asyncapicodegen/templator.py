@@ -66,6 +66,19 @@ class Generator(object):
         def Strip(s: str, chars):
             return s.strip(chars)
 
+        def MdIndent(s: str, width: int):
+            indention = " " * width
+            newline = "\n"
+            s += newline  # this quirk is necessary for splitlines method
+            lines = s.splitlines()
+            rv = lines.pop(0)
+            if lines:
+                rv += newline + newline.join(
+                    indention + line if (line and not line.strip().startswith('<')) else line for line in lines
+                )
+
+            return rv
+
         if self.jinjaEnvironment is None:
             #env = jinja2.Environment(loader=jinja2.PackageLoader(self.templatePkg, ''))
             loader = jinja2.ChoiceLoader([
@@ -92,6 +105,7 @@ class Generator(object):
             env.filters['enumify'] = Enumify
             env.filters['privatize'] = Privatize
             env.filters['strip'] = Strip
+            env.filters['mdindent'] = MdIndent
             env.tests['oftype'] = IsOfType
             env.tests['refToObj'] = ReferencePointsToObject
             self.jinjaEnvironment = env
