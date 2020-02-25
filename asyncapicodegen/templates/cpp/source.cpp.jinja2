@@ -1,8 +1,7 @@
 {%include 'file_prologue.jinja2'%}
 {%-import 'loader.jinja2' as loader-%}
 {%-set className = resolver.cpp_resolve_namespace(ns)+Name%}
-{%-import 'type_helpers.jinja2' as functions-%}
-#pragma once
+{%-import 'type_helpers.jinja2' as functions%}
 
 #include <vector>
 #include <boost/format.hpp>
