@@ -18,4 +18,8 @@ std::size_t seed = 0;
 {%-for param, _ in parameters%}
 boost::hash_combine(seed, {{param}});{# Need hash value of param #}
 {%-endfor%}
-{%-endmacro%}
+{%-endmacro-%}
+
+{%-macro Lock(operationId) -%}
+const std::lock_guard<std::mutex> _lock(_{{operationId |camelCase }}Mutex);
+{%-endmacro-%}

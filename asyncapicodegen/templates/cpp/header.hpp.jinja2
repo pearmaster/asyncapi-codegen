@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <exception>
+#include <mutex>
 
 // FIXME: Somehow rapidjson provides a copy of inttypes.h that conflicts
 // with other definitions.  This flag gets things to compile, but
@@ -118,7 +119,7 @@ public:
      * Publishes to '{{channelPath}}'
      {%-if operation.description %}
      *
-     {{operation.description |indent(5) }}
+     {{operation.description |indent(5)|doxygen }}
      *
      {%-endif%}
      {%-for paramName, paramItem in channelItem.Parameters() %}
@@ -151,7 +152,7 @@ public:
      * Register callbacks for messages to '{{channelPath}}'
      {%-if operation.description %}
      *
-     {{operation.description | indent(5)}}
+     {{operation.description | indent(5) | doxygen}}
      *
      {%-endif%}
      * \param cb Function object (callback) that will be called on successful receipt of messages.
@@ -166,6 +167,12 @@ public:
     /*! Gets the last message published to '{{channelPath}}'
      */
     boost::optional<{{operation.GetMessageType(resolver)}}> GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}) const;
+    {%if channelItem.parameters | length == 1 %}
+    /*! Since '{{operation.operationId}}' messages are retained, this method returns the keys with which the retained values can be retrieved.
+     * \returns list of keys for retained values
+     */
+    std::vector<{{channelItem.Parameters()[0][1].GetType(resolver)}}> Last{{operation.operationId | PascalCase}}Keys() const;
+    {%endif-%}
     {%-endif%}
 
     {%-endif%} {# subscribe topics #}
@@ -187,6 +194,7 @@ private:
     {{functions.SubscribeCallback(resolver, channelItem)}} _{{operation.operationId | camelCase }}Callback;
     ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
     {%-if operation.GetRetain(default=False) == true%}
+    std::mutex _{{operation.operationId |camelCase }}Mutex;
     {%-if channelItem.parameters | length == 0 %}
     boost::optional<{{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}

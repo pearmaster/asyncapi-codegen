@@ -95,6 +95,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
             {%-if operation.GetRetain(default=False) == True%}
             if (payload.empty())
             {
+                {{functions.Lock(operation.operationId)|indent(16)}}
                 {%-if channelItem.parameters | length == 0 %}
                 _last{{operation.operationId | PascalCase }}Value = boost::none;
                 {%-elif channelItem.parameters | length == 1 %}
@@ -115,14 +116,18 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
                 {{operation.GetMessageType(resolver)}} inMsg = {{operation.GetMessageType(resolver)}}::FromJson(doc);
 
                 {%-if operation.GetRetain() == true%}
-                {%-if channelItem.parameters | length == 0 %}
-                _last{{operation.operationId | PascalCase }}Value = inMsg;
-                {%-elif channelItem.parameters | length == 1 %}
-                _last{{operation.operationId | PascalCase }}Values.insert(std::pair<{{channelItem.Parameters()[0][1].GetType(resolver)}}, {{operation.GetMessageType(resolver)}}>({{channelItem.Parameters()[0][0]}}, inMsg));
-                {%-else%}
-                {{functions.ParamHash(channelItem.Parameters()) | indent(16)}}
-                _last{{operation.operationId | PascalCase }}Values.insert(std::pair<std::size_t, {{operation.GetMessageType(resolver)}}>(seed, inMsg));
-                {%-endif%}
+                /* Restrict scope */
+                {
+                    {{functions.Lock(operation.operationId)|indent(20)}}
+                    {%-if channelItem.parameters | length == 0 %}
+                    _last{{operation.operationId | PascalCase }}Value = inMsg;
+                    {%-elif channelItem.parameters | length == 1 %}
+                    _last{{operation.operationId | PascalCase }}Values.insert(std::pair<{{channelItem.Parameters()[0][1].GetType(resolver)}}, {{operation.GetMessageType(resolver)}}>({{channelItem.Parameters()[0][0]}}, inMsg));
+                    {%-else%}
+                    {{functions.ParamHash(channelItem.Parameters()) | indent(16)}}
+                    _last{{operation.operationId | PascalCase }}Values.insert(std::pair<std::size_t, {{operation.GetMessageType(resolver)}}>(seed, inMsg));
+                    {%-endif%}
+                }
                 {%-endif%} {#End if retain#}
 
                 if ({{ callbackFuncName }})
@@ -216,6 +221,7 @@ void {{className}}::Register{{operation.operationId | PascalCase}}Callbacks({{-'
     
 boost::optional<{{operation.GetMessageType(resolver)}}> {{className}}::GetLast{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}) const
 {
+    {{functions.Lock(operation.operationId)|indent(4)}}
     {%-if channelItem.parameters | length == 0 %}
     return _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
@@ -235,6 +241,19 @@ boost::optional<{{operation.GetMessageType(resolver)}}> {{className}}::GetLast{{
     return boost::none;
     {%-endif%}
 }
+{%-if channelItem.parameters | length == 1 %}
+std::vector<{{channelItem.Parameters()[0][1].GetType(resolver)}}> {{className}}::Last{{operation.operationId | PascalCase}}Keys() const
+{
+    std::vector<{{channelItem.Parameters()[0][1].GetType(resolver)}}> keys;
+    {{functions.Lock(operation.operationId)|indent(4)}}
+    for (auto const& x : _last{{operation.operationId | PascalCase }}Values)
+    {
+        keys.push_back(x.first);
+    }
+    return keys;
+}
+{%endif-%}
+
 {%-endif%}
 
 {%-endif%}

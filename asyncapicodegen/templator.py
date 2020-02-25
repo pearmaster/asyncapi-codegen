@@ -3,6 +3,7 @@ import jinja2
 import stringcase
 import re
 
+PLANTUML_REPLACE = re.compile(r"```plantuml\n(.*)```", re.DOTALL|re.MULTILINE)
 
 class Generator(object):
 
@@ -79,6 +80,11 @@ class Generator(object):
 
             return rv
 
+        def Doxygenify(s: str):
+            if "```plantuml" in s:
+                return PLANTUML_REPLACE.sub(r"\\startuml\n\1\\enduml", s)
+            return s
+
         if self.jinjaEnvironment is None:
             #env = jinja2.Environment(loader=jinja2.PackageLoader(self.templatePkg, ''))
             loader = jinja2.ChoiceLoader([
@@ -106,6 +112,7 @@ class Generator(object):
             env.filters['privatize'] = Privatize
             env.filters['strip'] = Strip
             env.filters['mdindent'] = MdIndent
+            env.filters['doxygen'] = Doxygenify
             env.tests['oftype'] = IsOfType
             env.tests['refToObj'] = ReferencePointsToObject
             self.jinjaEnvironment = env
