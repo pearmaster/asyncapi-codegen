@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from asyncapicodegen import _version
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -7,7 +8,7 @@ with open("requirements.txt", "r") as fp:
     requirements = fp.read().split('\n')
 
 setup(name='asyncapi-codegen',
-      version='0.0.14',
+      version=_version.__version__,
       url='http://github.com/pearmaster/asyncapi-codgen',
       author='Jacob Brunson',
       author_email='pypi@jacobbrunson.com',
