@@ -195,7 +195,7 @@ private:
     {{functions.SubscribeCallback(resolver, channelItem)}} _{{operation.operationId | camelCase }}Callback;
     ErrorCallback _{{operation.operationId | camelCase }}ErrorCallback;
     {%-if operation.GetRetain(default=False) == true%}
-    std::mutex _{{operation.operationId |camelCase }}Mutex;
+    mutable std::mutex _{{operation.operationId |camelCase }}Mutex;
     {%-if channelItem.parameters | length == 0 %}
     boost::optional<{{operation.GetMessageType(resolver)}}> _last{{operation.operationId | PascalCase }}Value;
     {%-elif channelItem.parameters | length == 1 %}
