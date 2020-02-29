@@ -179,7 +179,7 @@ void {{className}}::{{operation.operationId | PascalCase}}(
     const {{operation.GetMessageType(resolver)}}& msg
     {{-operation.CppAdditionalMqttParams()}})
 {
-    {%-set qos = operation.GetQoS() or 'qos' %}
+    {%-set qos = operation.GetQoS(default='qos') %}
     {%-set retain %}{%if operation.GetRetain() is not none%}{{operation.GetRetain()|lower}}{%else%}retain{%endif%}{%endset%}
     {{-TopicString(channelItem, operation) |indent(4)}}
     rapidjson::StringBuffer buf;
@@ -193,9 +193,9 @@ void {{className}}::{{operation.operationId | PascalCase}}(
 {%if operation.GetRetain(default=False) == True %}
 void {{className}}::Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}}{{-operation.CppAdditionalMqttParams(['qos'])}})
 {
-    {%- set qos = operation.GetQoS() or 'qos' %}
+    {%- set qos = operation.GetQoS(default='qos')  %}
     {{-TopicString(channelItem, operation) |indent(4)}}
-    _broker->Publish(topicStr, "", {{ qos }}, true);
+    _broker->Publish(topicStr, "", {{ qos }}, true); 
 }
 {%-endif%}
 {%-endif%}
