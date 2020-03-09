@@ -1,8 +1,10 @@
 import abc
 import stringcase
+import datetime
 
 from . import templator
 from . import specwrapper
+from . import _version
 import jsonschemacodegen.cpp
 import jsonschemacodegen.resolver
 
@@ -129,6 +131,8 @@ class GeneratorFromAsyncApi(object):
             resolver=self.resolver,
             includes=[headerFilename],
             Name=class_name,
+            codegenVersion=_version.__version__,
+            codegenDate=datetime.datetime.now().strftime("%c"),
             spec=wrappedSpec)
         genFiles += GeneratedFiles(cppFile=sourceFilename)
         self.headerGenerator.RenderTemplate("header.hpp.jinja2", 
@@ -136,6 +140,8 @@ class GeneratorFromAsyncApi(object):
             ns=self.namespace,
             resolver=self.resolver,
             Name=class_name,
+            codegenVersion=_version.__version__,
+            codegenDate=datetime.datetime.now().strftime("%c"),
             spec=wrappedSpec)
         genFiles += GeneratedFiles(hppFile=headerFilename)
         return genFiles
