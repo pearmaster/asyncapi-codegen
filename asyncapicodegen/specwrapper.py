@@ -379,6 +379,10 @@ class Components(BaseDict):
         if 'messages' in self.data:
             for msgKey, msg in self.data['messages'].items():
                 self.data['messages'][msgKey] = Message(root, msg)
+        if 'schemas' in self.data:
+            for schemaKey, schemaObj in self.data['schemas'].items():
+                self.data['schemas'][schemaKey] = SchemaFactory(schemaObj, self.root)
+
 
 class SpecRoot(BaseDict):
     
@@ -413,3 +417,24 @@ class SpecRoot(BaseDict):
 
     def __repr__(self):
         return f"Spec<{self.name}>"
+
+def invert_spec(initialdata):
+    data = {}
+    theKeys = initialdata.keys()
+    theKeys.remove('channels')
+    for k in theKeys:
+        data[k] = initialdata[k]
+    data['channels'] = {}
+    for t in initialdata['channels']:
+        assert('$ref' not in initialdata['channels'][t]), "$ref to channel item not supported"
+        data['channels'][t] = {}
+        channelItemProps = data['channels'][t].keys()
+        channelItemProps.remove('subscribe')
+        channelItemProps.remove('publish')
+        for p in channelItemProps:
+            data['channels'][t][p] = initialdata['channels'][t][p]
+        if 'publish' in initialdata['channels'][t]:
+            data['channels'][t]['subscribe'] = initialdata['channels'][t]['publish']
+        if 'subscribe' in initialdata['channels'][t]:
+            data['channels'][t]['publish'] = initialdata['channels'][t]['subscribe']
+    return data

@@ -32,6 +32,22 @@ class GeneratorFromAsyncApi(object):
             files.append(output)
         return files
 
+    def GenerateTestsForType(self, spec, itemType, getSchemaFunc):
+        files = []
+        pathBase = "#/components/%s/%s"
+        if 'components' not in spec or itemType not in spec['components']:
+            return files
+        for name, obj in spec['components'][itemType].items():
+            ref = pathBase % (itemType, name)
+            fileBase = self.resolver.py_filename(ref)
+            if fileBase.endswith(".py"):
+                fileBase = fileBase[:-3]
+            schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
+            schema = getSchemaFunc(obj)
+            output = schemaGenerator.GenerateTestFromPath(schema, spec, ref)
+            files.append(output)
+        return files
+
     def Generate(self, spec, class_name, filename_base):
         assert(isinstance(spec, dict))
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)
