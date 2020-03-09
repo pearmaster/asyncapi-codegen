@@ -2,3 +2,4 @@ jinja2==2.10.1
 stringcase
 json-schema-codegen>=0.1.7
 pyyaml
+ruamel.yaml

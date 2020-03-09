@@ -1,0 +1,24 @@
+from setuptools import setup, find_packages
+
+setup(name='asyncapi-{{Name}}',
+      version="{{spec.info.version}}",
+      {%if spec.info.contact %}
+      author='{{spec.info.contact.name}}',
+      author_email='{{spec.info.contact.email}}',
+      {%endif%}
+      description="AsyncAPI Generated Code for {{Name}}",
+      long_description="""{{spec.info.description}}""",
+      long_description_content_type="text/markdown",
+      license='{{spec.info.license.name}}',
+      packages=[
+          '{{Name}}',
+          '{{Name}}.messages',
+          '{{Name}}.schemas',
+      ],
+      zip_safe=False,
+      install_requires=[
+          'parse'
+      ],
+      include_package_data=True,
+      python_requires='>=3.7',
+)
