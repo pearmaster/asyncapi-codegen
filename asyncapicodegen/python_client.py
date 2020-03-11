@@ -36,6 +36,11 @@ class PackageResolver(SimpleResolver):
         ref = self._get_reference_parts(reference)
         return "{type}/{name}.py".format(**ref)
 
+    def py_client_filepath(self, client_type, filename):
+        return filename
+
+    def py_package_name(self):
+        return "asyncapi-client"
 
 class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
 
@@ -49,20 +54,24 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
 
         if 'channels' in wrappedSpec:
             clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
-            outputName = "{}.py".format(filename_base)
-            self.generator.RenderTemplate("client.py.jinja2", 
-                outputName, 
-                Name = "{}{}".format(stringcase.pascalcase(class_name), stringcase.pascalcase(clientType)),
-                spec = wrappedSpec,
-                resolver=self.resolver)
+            outputName = self.resolver.py_client_filepath(clientType, "{}.py".format(filename_base))
+            if outputName is not None:
+                self.generator.RenderTemplate("client.py.jinja2", 
+                    outputName, 
+                    Name = "{}{}".format(stringcase.pascalcase(class_name), stringcase.pascalcase(clientType)),
+                    spec = wrappedSpec,
+                    resolver=self.resolver)
     
     def GenerateSetup(self, spec, class_name):
         assert(isinstance(spec, dict))
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)
-        self.generator.RenderTemplate("setup.py.jinja2", 
-                "setup.py", 
-                Name = "{}".format(stringcase.pascalcase(class_name)),
-                spec = wrappedSpec,
-                resolver=self.resolver)
+        clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
+        print(f"Generating setup for {clientType}")
+        if clientType in ['provider', 'utilizer', 'library']:
+            self.generator.RenderTemplate("setup.py.jinja2", 
+                    "setup.py", 
+                    Name = "{}".format(stringcase.pascalcase(class_name)),
+                    spec = wrappedSpec,
+                    resolver=self.resolver)
 
 

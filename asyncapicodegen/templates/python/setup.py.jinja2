@@ -1,19 +1,20 @@
 from setuptools import setup, find_packages
 
-setup(name='asyncapi-{{Name}}',
+setup(name='{{resolver.py_package_name()}}',
       version="{{spec.info.version}}",
       {%if spec.info.contact %}
       author='{{spec.info.contact.name}}',
       author_email='{{spec.info.contact.email}}',
       {%endif%}
-      description="AsyncAPI Generated Code for {{Name}}",
+      description="{{spec.info.title}}",
       long_description="""{{spec.info.description}}""",
       long_description_content_type="text/markdown",
       license='{{spec.info.license.name}}',
       packages=[
-          '{{Name}}',
-          '{{Name}}.messages',
-          '{{Name}}.schemas',
+          '{{resolver.py_package_base()}}',
+          '{{resolver.py_package_base()}}.messages',
+          '{{resolver.py_package_base()}}.schemas',
+          '{{resolver.py_package_base()}}.tests',
       ],
       zip_safe=False,
       install_requires=[
