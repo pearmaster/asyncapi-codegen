@@ -51,6 +51,7 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
         self.GenerateSchemasForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
         self.GenerateSchemasForType(wrappedSpec, 'schemas', lambda obj: obj)
         self.GenerateTestsForType(wrappedSpec, 'schemas', lambda obj: obj)
+        self.GenerateTestsForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
 
         if 'channels' in wrappedSpec:
             clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
