@@ -2,7 +2,7 @@ import abc
 import stringcase
 import datetime
 
-from . import templator
+from jacobsjinjatoo import templator
 from . import specwrapper
 from . import _version
 import jsonschemacodegen.cpp
@@ -62,8 +62,12 @@ class GeneratorFromAsyncApi(object):
         for u in src_usings:
             self.resolver.cpp_add_using(u)
 
-        self.srcGenerator = templator.Generator('asyncapicodegen.templates.cpp', self.output_dir['src'])
-        self.headerGenerator = templator.Generator('asyncapicodegen.templates.cpp', self.output_dir['header'])
+        self.srcGenerator = templator.CodeTemplator(self.output_dir['src'])
+        self.srcGenerator.add_template_package('asyncapicodegen.templates.cpp')
+        self.srcGenerator.add_template_package('jsonschemacodegen.templates.cpp')
+        self.headerGenerator = templator.CodeTemplator(self.output_dir['header'])
+        self.headerGenerator.add_template_package('asyncapicodegen.templates.cpp')
+        self.headerGenerator.add_template_package('jsonschemacodegen.templates.cpp')
 
     def GenerateSchemasForType(self, spec, url, itemType, getSchemaFunc):
         assert(isinstance(spec, specwrapper.SpecRoot))
@@ -96,8 +100,8 @@ class GeneratorFromAsyncApi(object):
                 headerFilename = self.resolver.cpp_get_header(path)
                 sourceFilename = "{}.cpp".format(self.resolver.cpp_get_filename_base(path))
                 name = stringcase.pascalcase(stringcase.snakecase(serverName))
-                self.srcGenerator.RenderTemplate("broker.cpp.jinja2", 
-                    sourceFilename, 
+                self.srcGenerator.render_template(template_name="broker.cpp.jinja2", 
+                    output_name=sourceFilename, 
                     usings=self.resolver.cpp_get_usings(),
                     ns=self.namespace, 
                     resolver=self.resolver,
@@ -105,8 +109,8 @@ class GeneratorFromAsyncApi(object):
                     Name=name,
                     server=serverObj)
                 genFiles += GeneratedFiles(cppFile=sourceFilename)
-                self.headerGenerator.RenderTemplate("broker.hpp.jinja2", 
-                    headerFilename,
+                self.headerGenerator.render_template(template_name="broker.hpp.jinja2", 
+                    output_name=headerFilename,
                     ns=self.namespace,
                     resolver=self.resolver,
                     Name=name,
@@ -124,8 +128,8 @@ class GeneratorFromAsyncApi(object):
 
         headerFilename = "{}.hpp".format(self.resolver.cpp_get_client_filename_base(wrappedSpec, class_name))
         sourceFilename = "{}.cpp".format(self.resolver.cpp_get_client_filename_base(wrappedSpec, class_name))
-        self.srcGenerator.RenderTemplate("source.cpp.jinja2", 
-            sourceFilename, 
+        self.srcGenerator.render_template(template_name="source.cpp.jinja2", 
+            output_name=sourceFilename, 
             usings=self.usings,
             ns=self.namespace, 
             resolver=self.resolver,
@@ -135,8 +139,8 @@ class GeneratorFromAsyncApi(object):
             codegenDate=datetime.datetime.now().strftime("%c"),
             spec=wrappedSpec)
         genFiles += GeneratedFiles(cppFile=sourceFilename)
-        self.headerGenerator.RenderTemplate("header.hpp.jinja2", 
-            headerFilename,
+        self.headerGenerator.render_template(template_name="header.hpp.jinja2", 
+            output_name=headerFilename,
             ns=self.namespace,
             resolver=self.resolver,
             Name=class_name,

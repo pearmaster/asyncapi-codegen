@@ -2,7 +2,7 @@ import abc
 import stringcase
 import yaml
 
-from . import templator
+from jacobsjinjatoo import templator
 from . import specwrapper
 from . import python_summary
 import jsonschemacodegen.python
@@ -57,8 +57,8 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
             clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
             outputName = self.resolver.py_client_filepath(clientType, "{}.py".format(filename_base))
             if outputName is not None:
-                self.generator.RenderTemplate("client.py.jinja2", 
-                    outputName, 
+                self.generator.render_template(template_name="client.py.jinja2", 
+                    output_name=outputName, 
                     Name = "{}{}".format(stringcase.pascalcase(class_name), stringcase.pascalcase(clientType)),
                     spec = wrappedSpec,
                     resolver=self.resolver)
@@ -69,8 +69,8 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
         clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
         print(f"Generating setup for {clientType}")
         if clientType in ['provider', 'utilizer', 'library']:
-            self.generator.RenderTemplate("setup.py.jinja2", 
-                    "setup.py", 
+            self.generator.render_template(template_name="setup.py.jinja2", 
+                    output_name="setup.py", 
                     Name = "{}".format(stringcase.pascalcase(class_name)),
                     spec = wrappedSpec,
                     resolver=self.resolver)

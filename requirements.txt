@@ -1,5 +1,5 @@
-jinja2==2.10.1
 stringcase
 json-schema-codegen>=0.2.1
 pyyaml
 ruamel.yaml
+jacobsjinja2

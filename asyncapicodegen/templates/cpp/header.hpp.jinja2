@@ -120,7 +120,7 @@ public:
      * Publishes to '{{channelPath}}'
      {%-if operation.description %}
      *
-     {{operation.description |indent(5)|doxygen }}
+     {{operation.description | indent(5) | doxygenify }}
      *
      {%-endif%}
      {%-for paramName, paramItem in channelItem.Parameters() %}
@@ -153,7 +153,7 @@ public:
      * Register callbacks for messages to '{{channelPath}}'
      {%-if operation.description %}
      *
-     {{operation.description | indent(5) | doxygen}}
+     {{operation.description | indent(5) | doxygenify}}
      *
      {%-endif%}
      * \param cb Function object (callback) that will be called on successful receipt of messages.

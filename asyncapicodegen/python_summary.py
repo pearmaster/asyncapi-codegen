@@ -2,7 +2,7 @@ import abc
 import stringcase
 import yaml
 
-from . import templator
+from jacobsjinjatoo import templator
 from . import specwrapper
 import jsonschemacodegen.python
 import jsonschemacodegen.resolver
@@ -15,7 +15,7 @@ class GeneratorFromAsyncApi(object):
     def __init__(self, output_dir, resolver=None):
         self.output_dir = output_dir
         self.resolver = resolver
-        self.generator = templator.Generator('asyncapicodegen.templates.python', self.output_dir)
+        self.generator = templator.CodeTemplator(self.output_dir).add_template_package('asyncapicodegen.templates.python')
 
     def GenerateSchemasForType(self, spec, itemType, getSchemaFunc):
         files = []
@@ -57,8 +57,8 @@ class GeneratorFromAsyncApi(object):
 
         if 'channels' in wrappedSpec:
             outputName = self.resolver.py_client_filepath("summary", "{}.py".format(filename_base))
-            self.generator.RenderTemplate("summary.py.jinja2", 
-                outputName, 
+            self.generator.render_template(template_name="summary.py.jinja2", 
+                output_name=outputName, 
                 spec = wrappedSpec,
                 resolver=self.resolver)
 
