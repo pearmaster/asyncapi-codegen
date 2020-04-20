@@ -32,7 +32,7 @@ namespace {{n}} {
 
 
 /*! {{spec.title}}
- * \class {{Name}}
+ * \class {{Name}} {{filename}} {{filepath}}
  * 
  */
 class {{Name}}
@@ -117,16 +117,20 @@ public:
     {%-set operation = channelItem.publish %}
 
     /*! {{operation.summary}}
-     * Publishes to '{{channelPath}}'
+     * Publishes to `{{channelPath}}`
      {%-if operation.description %}
      *
      {{operation.description | indent(5) | doxygenify }}
+     * An example JSON payload that may be published is:
+     ```json
+     {{operation.Message().Examples(resolver)[-1] | indent(5)}}
+     ```
      *
      {%-endif%}
      {%-for paramName, paramItem in channelItem.Parameters() %}
-     * \param {{paramItem.GetType(resolver)}} {{paramName}}
+     * \param {{paramName}} {{paramItem.Description(resolver)}}
      {%-endfor %}
-     * \param {{operation.GetMessageType(resolver)}} msg
+     * \param msg Message object to serialize and publish as JSON.
      */
     void {{operation.operationId | PascalCase}}(
         {{-channelItem.CppParamList(resolver, append=', ')-}}
@@ -134,11 +138,11 @@ public:
         {{-operation.CppAdditionalMqttParams()}});
 
     {%if operation.GetRetain(default=False) == True %}
-    /*! Publishes to '{{channelPath}}' with an empty payload.
+    /*! Publishes to `{{channelPath}}` with an empty payload.
      * With MQTT (and perhaps other frameworks) a message that is retained on the broker may be cleared if a null payload is published.  This function provides that functionality.
      * \fn void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}});
      {%-for paramName, paramItem in channelItem.Parameters() %}
-     * \param {{paramItem.GetType(resolver)}} {{paramName}} 
+     * \param {{paramName}} {{paramItem.Description(resolver)}}
      {%-endfor %}
      */
     void Clear{{operation.operationId | PascalCase}}({{-channelItem.CppParamList(resolver)-}});
@@ -154,6 +158,11 @@ public:
      {%-if operation.description %}
      *
      {{operation.description | indent(5) | doxygenify}}
+     *
+     * An example JSON payload that may be received, parsed, and sent to the callback function is:
+     ```json
+     {{operation.Message().Examples(resolver)[-1] | indent(5) }}
+     ```
      *
      {%-endif%}
      * \param cb Function object (callback) that will be called on successful receipt of messages.

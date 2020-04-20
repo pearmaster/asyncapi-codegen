@@ -46,7 +46,7 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
 
     def Generate(self, spec, class_name, filename_base):
         assert(isinstance(spec, dict))
-        wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)
+        wrappedSpec = specwrapper.SpecRoot(spec, self.resolver, class_name)
 
         self.GenerateSchemasForType(wrappedSpec, 'messages', lambda obj: obj['payload'])
         self.GenerateSchemasForType(wrappedSpec, 'schemas', lambda obj: obj)

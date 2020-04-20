@@ -21,6 +21,23 @@ class Parameter(BaseDict):
         if 'schema' in self.data and 'description' not in self.data['schema'] and 'description' in self.data:
             self.data['schema']['description'] = self.data['description']
 
+    def Description(self, resolver):
+        param = self.data
+        if '$ref' in self.data:
+            param = self.root.Resolve(self.data['$ref'], asClass=Parameter, name=self.name)
+        if 'description' in param:
+            return param['description']
+        schema = self.Schema(resolver)
+        return 'description' in schema and schema['description'] or '' 
+
+    def Schema(self, resolver):
+        schema = 'schema' in self.data and self.data['schema'] or None
+        if '$ref' in self.data:
+            param = self.root.Resolve(self.data['$ref'], asClass=Parameter, name=self.name)
+            if 'schema' in param:
+                schema = param['schema']
+        return schema
+
     def GetType(self, resolver):
         if '$ref' in self.data:
             return resolver.cpp_get_ns_name(self.data['$ref'])
@@ -101,24 +118,6 @@ class Operation(BaseDict):
             print (self.data)
             raise NotImplementedError
 
-    def Examples(self, resolver):
-        generator = json_example.GeneratorFromSchema(resolver)
-        if '$ref' in self.data['message']:
-            try:
-                doc = resolver.get_document(self.data['message']['$ref'])
-            except KeyError:
-                doc = self.root
-            message_json = resolver.get_json(self.data['message']['$ref'], doc)
-            try:
-                examples = generator.Generate(doc, message_json['payload'])
-            except KeyError as e:
-                print(f"Couldn't find 'payload' in {message_json}")
-                raise e
-        else:
-            examples = generator.Generate(self.root, self.data['message']['payload'])
-        exampleList = [json.dumps(ex, indent=2, sort_keys=True) for ex in examples]
-        sorted(exampleList, reverse=True)
-        return exampleList
 
     def GetQoS(self, default=None):
         try:
@@ -371,6 +370,10 @@ class Message(BaseDict):
             return self.root.Resolve(self.data['payload']['$ref'])
         return SchemaFactory(self.data['payload'], self.root)
 
+    def Examples(self, resolver, number_of_examples=5):
+        exampleGenerator = json_example.GeneratorFromSchema(resolver)
+        examples = exampleGenerator.Generate(self.Schema(), number_of_examples)
+        return [json.dumps(ex, indent=2, sort_keys=True) for ex in examples]
 
 class Components(BaseDict):
 

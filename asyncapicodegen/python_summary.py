@@ -28,7 +28,7 @@ class GeneratorFromAsyncApi(object):
             if fileBase.endswith(".py"):
                 fileBase = fileBase[:-3]
             schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
-            output = schemaGenerator.Generate(getSchemaFunc(obj), stringcase.pascalcase(name), fileBase)
+            output = schemaGenerator.Generate(getSchemaFunc(obj), spec, stringcase.pascalcase(name), fileBase)
             files.append(output)
         return files
 
@@ -44,7 +44,11 @@ class GeneratorFromAsyncApi(object):
                 fileBase = fileBase[:-3]
             schemaGenerator = jsonschemacodegen.python.GeneratorFromSchema(self.output_dir, self.resolver)
             schema = getSchemaFunc(obj)
-            output = schemaGenerator.GenerateTestFromPath(schema, spec, ref)
+            try:
+                output = schemaGenerator.GenerateTestFromPath(schema, spec, ref)
+            except:
+                print(f"Failure generating test '{ref}' for scheam {schema} when root is {spec}")
+                raise
             files.append(output)
         return files
 

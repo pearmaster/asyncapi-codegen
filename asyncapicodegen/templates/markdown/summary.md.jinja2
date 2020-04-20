@@ -52,7 +52,7 @@
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or ch.operationId}}
-###### ID: `{{op.operationId}}`
+###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 
 ##### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
