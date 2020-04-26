@@ -95,7 +95,7 @@ class Operation(BaseDict):
         if 'traits' in self.data:
             for trait in self.data['traits']:
                 if '$ref' in trait:
-                    trait = self.root.Resolve(trait['$ref'], Trait)
+                    trait = self.root.Resolve(trait['$ref'], OperationTrait)
                 for k, v in trait.items():
                     assert(k not in ['message', 'traits'])
                     self.data[k] = v
@@ -334,7 +334,7 @@ class Binding(BaseDict):
     def __repr__(self):
         return f"Binding<{self.name}>"
 
-class Trait(BaseDict):
+class OperationTrait(BaseDict):
 
     def __init__(self, root, initialdata, name=None):
         super().__init__(root, initialdata)
@@ -344,7 +344,17 @@ class Trait(BaseDict):
             self.data['bindings'] = self.root.Resolve(initialdata['bindings']['$ref'], Binding, name=initialdata['bindings']['$ref'])
 
     def __repr__(self):
-        return f"Trait<{self.name}>"
+        return f"OperationTrait<{self.name}>"
+
+
+class MessageTrait(BaseDict):
+
+    def __init__(self, root, initialdata, name=None):
+        super().__init__(root, initialdata)
+        self.name = name
+
+    def __repr__(self):
+        return f"MessageTrait<{self.name}>"
 
 class Servers(BaseDict):
 
@@ -363,6 +373,13 @@ class Message(BaseDict):
 
     def __init__(self, root, initialdata):
         super().__init__(root, initialdata)
+        if 'traits' in self.data:
+            for trait in self.data['traits']:
+                if '$ref' in trait:
+                    trait = self.root.Resolve(trait['$ref'], MessageTrait)
+                for k, v in trait.items():
+                    assert(k not in ['payload', 'traits'])
+                    self.data[k] = v
 
     def Schema(self):
         assert('payload' in self.data)

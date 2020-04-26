@@ -1,6 +1,10 @@
 ##### {%if 'title' in op.Message()%}*{{op.Message().title}}*{%else%}*{{op.Message().name}}*{%endif%} Message:
-**ID**: `{{op.Message().name}}`
+**Message ID**: `{{op.Message().name}}`
 {{op.Message().description}}
+{%if 'externalDocs' in op.Message()%}
+[{{op.Message()['externalDocs']['description']}}]({{op.Message()['externalDocs']['url']}})
+
+{%endif-%}
 <details>
 <summary>
 Payload: 
