@@ -10,6 +10,9 @@
 #include <boost/functional/hash.hpp>
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+#include "rapidjson/error/en.h"
+
+#include "{{resolver.cpp_get_lib_ns() | join("/")}}/exceptions.hpp"
 
 {%-for inc in includes%}
 #include "{{inc}}"
@@ -110,6 +113,7 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
                 if (!ok)
                 {
                     Log("Could not JSON parse {{operation.operationId}} payload.");
+                    throw {{resolver.cpp_get_lib_ns() | join("::")}}::RapidJsonParseException(rapidjson::GetParseError_En(ok.Code()));
                 }
 
                 {{operation.GetMessageType(resolver)}} inMsg = {{operation.GetMessageType(resolver)}}::FromJson(doc);
