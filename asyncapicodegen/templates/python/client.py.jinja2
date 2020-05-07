@@ -1,5 +1,7 @@
 import json
 import parse
+import logging
+import sys
 {%-for inc in spec.channels.PyGetIncludes(resolver) | sort%}
 {{inc}}
 {%-endfor%}
@@ -20,13 +22,20 @@ class {{Name}}(object):
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
         self._subscriptions = []
+        self.logger = logging.getLogger("{{Name}}")
+        self.logger.setLevel(logging.DEBUG)
+
+    def add_log_handler(self, handler):
+        self.logger.addHandler(handler)
 
     def _subscribe(self, topic, qos):
         self._subscriptions.append((topic, qos))
         try:
             self._client.subscribe(topic, qos)
         except:
-            pass
+            self.logger.error(f"Unable to subscribe to {topic} with qos={qos}")
+        else:
+            self.logger.debug(f"Subscribed to {topic} with qos={qos}")
 
     def _on_connect(self, client, userdata, flags, rc):
         for sub in self._subscriptions:
@@ -81,12 +90,16 @@ class {{Name}}(object):
         try:
             json_obj = json.loads(payload)
         except:
-            # Can't really do anything of meaning if the payload wasn't json
+            self.logger.error(f"Could not JSON parse payload to '{topic}''")
             return
+        else:
+            self.logger.info(f"Got a message to '{topic}'")
+        handled_count = 0
         {%-for topicPattern, channelItem in spec.channels.items()%}
         {%-if 'subscribe' in channelItem %}
-        if self._client.topic_matches_sub("{{channelItem.GetSubscribePath()}}", topic):
+        if sys.modules[self._client.__module__].topic_matches_sub("{{channelItem.GetSubscribePath()}}", topic):
             if self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback is not None:
+                handled_count += 1
                 try:
                     msg = {{resolver.py_class_name(channelItem['subscribe']['message']['$ref'])}}(json_obj)
                     {%-if channelItem.parameters%}
@@ -101,8 +114,15 @@ class {{Name}}(object):
                     {%-endif%}
                     self._{{channelItem['subscribe']['operationId'] | camelCase }}Callback(msg{%if channelItem.parameters%}, **parsed_params.named{%endif%})
                 except Exception as e:
+                    self.logger.exception(f"Caught an exception while handling message to '{topic}'")
                     if self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback is not None:
                         self._{{channelItem['subscribe']['operationId'] | camelCase }}ErrorCallback(topic, payload, e)
+            else:
+                self.logger.info(f"The callback for {topic} was None")
         {%-endif%}
         {%-endfor%} 
+        if handled_count == 0:
+            self.logger.warning(f"Message to '{topic}' went unhandled")
+        else:
+            self.logger.debug(f"Message to '{topic}' was handled {handled_count} times")
 {# #}
