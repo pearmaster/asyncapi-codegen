@@ -2,7 +2,6 @@
 
 from asyncapicodegen import cpp, specwrapper, python_client, markdown_summary
 import stringcase
-import json
 import sys
 import os
 from pprint import pprint
@@ -17,40 +16,37 @@ assert(sys.version_info.major == 3 and sys.version_info.minor >= 7), "Requires P
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate AsyncAPI Code")
     input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument("--yaml", type=open, help="AsyncAPI YAML document")
-    input_group.add_argument("--json", type=open, help="AsyncAPI JSON document")
-    input_group.add_argument("--yaml-url", type=str, help="URL to AsyncAPI YAML document")
-    input_group.add_argument("--json-url", type=str, help="URL to AsyncAPI JSON document")
-    parser.add_argument("--output", type=str, help="Directory where output files should be written", required=True)
+    input_group.add_argument("--spec", type=open, help="AsyncAPI specification document")
+    input_group.add_argument("--spec-url", type=str, help="URL to AsyncAPI specification document")
+
+    parser.add_argument("--output_dir", type=str, help="Directory where output files should be written", required=True)
     parser.add_argument("--name", type=str, help="Name of the class that is generated", required=True)
-    parser.add_argument("--progtype", type=str, choices=["provider", "utilizer"], default="utilizer")
+    parser.add_argument("--progtype", type=str, choices=["provider", "utilizer", "library"], default="provider")
+
     lang = parser.add_mutually_exclusive_group(required=True)
-    lang.add_argument("--cpp", help="Generated C++ code")
-    lang.add_argument("--python", help="Generate Python3 code")
-    lang.add_argument("--python-package", help="Generate Python3 package")
-    lang.add_argument("--markdown", help="Generate Markdown Documentation")
+    lang.add_argument("--cpp", help="Generated C++ code", action='store_true')
+#    lang.add_argument("--python", help="Generate Python3 code", action='store_true')
+    lang.add_argument("--python-package", help="Generate Python3 package", action='store_true')
+    lang.add_argument("--markdown", help="Generate Markdown Documentation", action='store_true')
+
     args = parser.parse_args()
+    args.python = False # This needs to be removed when python as a non-package is supported
 
     spec = None
 
-    if args.yaml_url:
-        with urllib.request.urlopen(args.yaml_url) as yaml_fp:
-            spec = yaml.load(yaml_fp, Loader=yaml.Loader)
-    elif args.json_url:
-        with urllib.request.urlopen(args.json_url) as json_fp:
-            spec = json.load(json_fp)
-    elif args.yaml:
-        spec = yaml.load(args.yaml, Loader=yaml.Loader)
-    elif args.json:
-        spec = json.load(args.json)
+    if args.spec_url:
+        with urllib.request.urlopen(args.spec_url) as spec_fp:
+            spec = yaml.load(spec_fp, Loader=yaml.Loader)
+    elif args.spec:
+        spec = yaml.load(args.spec, Loader=yaml.Loader)
 
     if args.progtype == 'provider':
         spec = specwrapper.invert_spec(spec)
 
     if args.cpp:
         resolver = cpp.SimpleResolver(args.name)
-        src_dir = os.path.join(args.output, "src")
-        inc_dir = os.path.join(args.output, "include")
+        src_dir = os.path.join(args.output_dir, "src")
+        inc_dir = os.path.join(args.output_dir, "include")
         try:
             os.mkdir(src_dir)
             os.mkdir(inc_dir)
@@ -62,14 +58,14 @@ if __name__ == '__main__':
         cppList = result.cpp
         hppList = result.hpp
 
-        with open(os.path.join(args.output, 'sources.cmake'), 'w') as fp:
+        with open(os.path.join(args.output_dir, 'sources.cmake'), 'w') as fp:
             fp.write(f"set({args.name}_sources\n")
             cppList.sort()
             for c in cppList:
                 fp.write("{}\n".format(c))
             fp.write(")\n")
         
-        with open(os.path.join(args.output, 'headers.cmake'), 'w') as fp:
+        with open(os.path.join(args.output_dir, 'headers.cmake'), 'w') as fp:
             fp.write(f"set({args.name}_headers\n")
             hppList.sort()
             for c in hppList:
@@ -77,12 +73,14 @@ if __name__ == '__main__':
             fp.write(")\n")
 
     elif args.python or args.python_package:
+        output_dir = args.output_dir
         if args.python_package:
-            the_dirs = ['messages', 'schemas']
+            output_dir = os.path.join(args.output_dir, args.name)
+            the_dirs = ['messages', 'schemas', 'tests']
             for d in the_dirs:
                 try:
-                    dir_name = os.path.join(args.output, d)
-                    os.mkdir(dir_name)
+                    dir_name = os.path.join(output_dir, d)
+                    os.makedirs(dir_name)
                 except FileExistsError:
                     pass
                 with open(os.path.join(dir_name, '__init__.py'), 'w') as fp:
@@ -90,14 +88,15 @@ if __name__ == '__main__':
             resolver = python_client.PackageResolver(args.name)
         else:
             resolver = python_client.SimpleResolver(args.name)
-        pyClientGenerator = python_client.GeneratorFromAsyncApi(args.output, resolver)
-        pyClientGenerator.Generate(spec, stringcase.pascalcase(args.name), args.name)
+        pyClientGenerator = python_client.GeneratorFromAsyncApi(output_dir, resolver)
+        pyClientGenerator.Generate(spec, stringcase.pascalcase(args.name), args.progtype)
         if args.python_package:
-            pyClientGenerator.GenerateSetup(spec, args.name)
+            pySetupGenerator = python_client.GeneratorFromAsyncApi(args.output_dir, resolver)
+            print(pySetupGenerator.GenerateSetup(spec, args.name))
 
     elif args.markdown:
         resolver = cpp.SimpleResolver(args.name)
-        outname = os.path.join(args.output, f"{args.name}.md")
+        outname = os.path.join(args.output_dir, f"{args.name}.md")
         docGenerator = markdown_summary.GeneratorFromAsyncApi(outname, resolver)
         docGenerator.Generate(spec)
 

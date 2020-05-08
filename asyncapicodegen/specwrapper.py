@@ -440,17 +440,14 @@ class SpecRoot(BaseDict):
 
 def invert_spec(initialdata):
     data = {}
-    theKeys = initialdata.keys()
-    theKeys.remove('channels')
+    theKeys = [ k for k in initialdata.keys() if k != 'channels' ]
     for k in theKeys:
         data[k] = initialdata[k]
     data['channels'] = {}
     for t in initialdata['channels']:
         assert('$ref' not in initialdata['channels'][t]), "$ref to channel item not supported"
         data['channels'][t] = {}
-        channelItemProps = data['channels'][t].keys()
-        channelItemProps.remove('subscribe')
-        channelItemProps.remove('publish')
+        channelItemProps = [ k for k in data['channels'][t].keys() if k not in ['subscribe', 'publish'] ]
         for p in channelItemProps:
             data['channels'][t][p] = initialdata['channels'][t][p]
         if 'publish' in initialdata['channels'][t]:
