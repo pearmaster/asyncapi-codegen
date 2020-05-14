@@ -1,5 +1,5 @@
 stringcase
-json-schema-codegen>=0.6.0
+json-schema-codegen>=0.6.1
 pyyaml
 ruamel.yaml
-jacobsjinjatoo>=0.0.4
+jacobs-jinja-too>=0.0.4
