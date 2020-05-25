@@ -68,7 +68,8 @@ void {{className}}::ReceiveMessage(const std::string& topic, const std::string& 
     {
         Log("Handling message to {{operation.operationId}}");
         rapidjson::Document doc;
-        try {
+        try
+        {
             {%- if channelItem.GetPathParameters() | length > 0 %}
             std::vector<std::string> parts;
             boost::split(parts, topic, boost::is_any_of("/"));
@@ -189,9 +190,17 @@ void {{className}}::{{operation.operationId | PascalCase}}(
     rapidjson::StringBuffer buf;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
     rapidjson::Document doc;
-    msg.ToJson(doc, doc.GetAllocator());
-    doc.Accept(writer);
-    _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}});
+    try
+    {
+        msg.ToJson(doc, doc.GetAllocator());
+        doc.Accept(writer);
+        _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}});
+    }
+    catch (const std::exception& e)
+    {
+        Log("An exception was caught while serializing {{operation.GetMessageType(resolver)}}.  The message was NOT published to {{ channelPath }}.");
+        Log(e.what());
+    }
 }
 
 {%if operation.GetRetain(default=False) == True %}
