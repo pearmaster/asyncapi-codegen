@@ -1,6 +1,6 @@
 {%-macro ParamList(ch)-%}
 {%-for paramName, paramObj in ch.Parameters()-%}
- * **{{paramName}}** {%if paramObj.GetEnglishType(resolver) %}is a *{{paramObj.GetEnglishType(resolver)}}*{%endif%}
+ * **{{paramName}}** {{paramObj.Resolve().description | replace("\n", " ")}} {%if paramObj.GetEnglishType(resolver) %} - Its value must be {{paramObj.GetEnglishType(resolver)}}{%endif%}
 {%endfor-%}
 {%-endmacro-%}
 {%-set client = spec['x-client-role'] or 'client'%}
@@ -9,32 +9,42 @@
 
 {{spec.info.description}}
 
+{%include 'operation_list.md.jinja2'%}
+
 {%-if spec.tags | length > 0 %}
 ## Tags
 {%for tag in spec.tags%}
 <a name="tag-{{tag.name}}"></a>
 ##### {{tag.name}}
 {{tag.description}}
-{%-for ch in spec.channels.values() if 'publish' in ch%}
-{%-if ch.publish.HasTag(tag.name)%}
- * [{{ch.publish.summary}}](#{{ch.publish.operationId}}) {{ch.publish.GetTagNote(tag.name)}}
+{%set tagItems = [] %}
+{%-set tagList %}
+{%-for ch in spec.channels.values() %}
+{%-set op = 'publish' in ch and ch.publish or ch.subscribe %}
+{%-if op.HasTag(tag.name)%}{%-do tagItems.append(tag.name) %}
+ * [{{op.summary}}](#{{op.operationId}}) {{op.GetTagNote(tag.name)}}
 {%-endif%}
 {%-endfor%}
-{%-for ch in spec.channels.values() if 'subscribe' in ch%}
-{%-if ch.subscribe.HasTag(tag.name)%}
- * [{{ch.subscribe.summary}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
-{%-endif%}
-{%-endfor%}
+{%-endset%}
+<details>
+<summary>
+{{tagItems | length}} operation{%if tagItems | length != 1 %}s{%endif%}
+</summary>
+{{tagList}}
+</details>
+
 {%endfor%}
 {%-endif%} {# end if spec.tags #}
 
-## {{client |PascalCase}} may publish...
+## Publish operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'publish' in ch%}
 {%-set op = ch.publish %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or ch.operationId}}
 ###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
-
+{%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
+**See also**: {%for altOpId in op['x-see-also']['operationIds'] %}[{{altOpId}}](#{{altOpId}}){%if not loop.last%}, {%endif%}{%endfor%}
+{%endif-%}
 ##### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
 
@@ -48,13 +58,15 @@
 ----
 {% endfor %} {#publish operations#}
 
-## {{client |PascalCase}} may subscribe...
+## Subscribe operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or ch.operationId}}
 ###### Operation ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
-
+{%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
+**See also**: {%for altOpId in op['x-see-also']['operationIds'] %}[{{altOpId}}](#{{altOpId}}){%if not loop.last%}, {%endif%}{%endfor%}
+{%endif-%}
 ##### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
 {%-if ch.GetPathParameters() | length > 0 %}

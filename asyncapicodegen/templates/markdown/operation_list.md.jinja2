@@ -1,0 +1,9 @@
+## List of operations
+
+| Topic                         | operationId            | {{client |PascalCase}} operation |
+| ----------------------------- | ---------------------- | ---------------------|
+{%-for topic, ch in spec.channels |dictsort %}{%set op = 'publish' in ch and ch.publish or ch.subscribe %}
+| `{{topic}}` | **[{{op.operationId}}](#{{op.operationId}})**<br/>{{op.summary}} | {{'publish' in ch and 'publish' or 'subscribe'}} |
+{%-endfor%}
+
+{# #}
