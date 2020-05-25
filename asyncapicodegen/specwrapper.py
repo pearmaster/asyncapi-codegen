@@ -68,7 +68,21 @@ class Parameter(BaseDict):
                 return "{}{}".format(schema['type'], 'title' in schema and f" - {schema['title']}" or '')
             if 'oneOf' in schema:
                 try:
-                    alternatives = set([GetEnglishTypeForSchema(root, resolver, s) for s in schema['oneOf']])
+                    alternatives = []
+                    for s in schema.GetComponents():
+                        english_type = GetEnglishTypeForSchema(root, resolver, s)
+                        if english_type not in alternatives:
+                            alternatives.append(english_type)
+                except:
+                    return ""
+                return " OR ".join([ f"[{a}]" for a in alternatives])
+            if 'anyOf' in schema:
+                try:
+                    alternatives = []
+                    for s in schema.GetComponents():
+                        english_type = GetEnglishTypeForSchema(root, resolver, s)
+                        if english_type not in alternatives:
+                            alternatives.append(english_type)
                 except:
                     return ""
                 return " OR ".join([ f"[{a}]" for a in alternatives])
@@ -76,6 +90,12 @@ class Parameter(BaseDict):
         
         engType = GetEnglishTypeForSchema(self.root, resolver, thedata['schema'])
         return engType
+
+    def Resolve(self):
+        instance = self
+        while '$ref' in instance.data:
+            instance = self.root.Resolve(instance.data['$ref'], Parameter, name=self.name)
+        return instance
 
     def __hash__(self):
         if '$ref' in self.data:
@@ -306,13 +326,6 @@ class ServerObject(BaseDict):
             return self.data['bindings'][self.data['protocol']][name]
         except:
             return None
-
-    def IDontKnowWhatThisDeadCodeIs(self):
-        if 'security' in self.data:
-            for schemeName in self.data['security'].keys():
-                scheme = self.root['components']['securitySchemes'][schemeName]
-                if scheme['type'] != 'userPassword':
-                    raise NotImplementedError
 
     def AcceptsUsernamePassword(self):
         if 'security' in self.data:
