@@ -194,7 +194,7 @@ void {{className}}::{{operation.operationId | PascalCase}}(
     {
         msg.ToJson(doc, doc.GetAllocator());
         doc.Accept(writer);
-        _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}});
+        _broker->Publish(topicStr, buf.GetString(), {{qos}}, {{retain}}); // {%if qos != 'qos'%}qos={{qos}} {%endif%}  {%if operation.GetRetain() is not none%}retain={{operation.GetRetain()}}{%endif%}
     }
     catch (const std::exception& e)
     {
