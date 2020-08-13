@@ -68,25 +68,66 @@ using namespace {{using | join ("::")}};
     mosquitto_lib_init();
     _mosq = mosquitto_new(_clientId.c_str(), false, (void*)this);
 
-    mosquitto_connect_callback_set(_mosq, [](struct mosquitto *mosq, void *user, int i)
+    mosquitto_connect_callback_set(_mosq, [](struct mosquitto *mosq, void *user, int rc)
     {
         {{className}} *thisClient = static_cast<{{className}}*>(user);
-        //cout << "Connected to " << thisClient->_host << endl;
-        boost::mutex::scoped_lock lock(thisClient->_mutex);
-        while(!thisClient->_subscriptions.empty())
+
+        switch (rc)
         {
-            auto sub = thisClient->_subscriptions.front();
-            //cout << "Subscribing to " << sub._topic << endl;
-            mosquitto_subscribe(mosq, NULL, sub._topic.c_str(), sub._qos);
-            thisClient->_subscriptions.pop();
+            case 0:
+            {
+                boost::format msg("Connected to %1%") % thisClient->_host;
+                thisClient->Log(Message::CONNECTION, MessageSeverity::INFO, msg.str());
+
+                boost::mutex::scoped_lock lock(thisClient->_mutex);
+                while(!thisClient->_subscriptions.empty())
+                {
+                    auto sub = thisClient->_subscriptions.front();
+                    //cout << "Subscribing to " << sub._topic << endl;
+                    mosquitto_subscribe(mosq, NULL, sub._topic.c_str(), sub._qos);
+                    thisClient->_subscriptions.pop();
+                }
+                while(!thisClient->_msgQueue.empty())
+                {
+                    auto msg = thisClient->_msgQueue.front();
+                    //cout << "Sending message to " << msg._topic << endl;
+                    mosquitto_publish(mosq, NULL, msg._topic.c_str(), msg._payload.size(), msg._payload.c_str(), msg._qos, msg._retain);
+                    thisClient->_msgQueue.pop();
+                }
+            }
+
+            case 1:
+            {
+                boost::format msg("Connected refused to %1%: unacceptable protocol version") % thisClient->_host;
+                thisClient->Log(Message::CONNECTION, MessageSeverity::ERROR, msg.str());
+            }
+
+            case 2:
+            {
+                boost::format msg("Connected refused to %1%: identifier rejected") % thisClient->_host;
+                thisClient->Log(Message::CONNECTION, MessageSeverity::ERROR, msg.str());
+            }
+
+            case 3:
+            {
+                boost::format msg("Connected refused to %1%: broker unavailable") % thisClient->_host;
+                thisClient->Log(Message::CONNECTION, MessageSeverity::ERROR, msg.str());
+            }
+
+            defaut:
+            {
+                boost::format msg("Connected refused to %1%: rc=%2%") % thisClient->_host % rc;
+                thisClient->Log(Message::CONNECTION, MessageSeverity::ERROR, msg.str());
+            }
         }
-        while(!thisClient->_msgQueue.empty())
-        {
-            auto msg = thisClient->_msgQueue.front();
-            //cout << "Sending message to " << msg._topic << endl;
-            mosquitto_publish(mosq, NULL, msg._topic.c_str(), msg._payload.size(), msg._payload.c_str(), msg._qos, msg._retain);
-            thisClient->_msgQueue.pop();
-        }
+    });
+
+    mosquitto_disconnect_callback_set(_mosq, [](struct mosquitto *mosq, void *user, int rc)
+    {
+        {{className}} *thisClient = static_cast<{{className}}*>(user);
+
+        boost::format msg("%1% disconnection from %2%") % (rc == 0 ? "Requested" : "Unexpected") % thisClient->_host;
+        thisClient->Log(Message::CONNECTION, MessageSeverity::INFO, msg.str());
     });
 
     mosquitto_message_callback_set(_mosq, [](struct mosquitto *mosq, void *user, const struct mosquitto_message *mmsg)
@@ -99,7 +140,6 @@ using namespace {{using | join ("::")}};
         {
             cb(topic, payload);
         }
-    
     });
 
     {%-if server.AcceptsUsernamePassword()%}
@@ -129,13 +169,17 @@ void {{className}}::Publish(const std::string& topic, const std::string& payload
     int rc = mosquitto_publish(_mosq, NULL, topic.c_str(), payload.size(), payload.c_str(), qos, retain);
     if (rc == MOSQ_ERR_NO_CONN)
     {
+        boost::format msg("Without a connection, a message to publish to %1% has been queued") % topic;
+        Log(Message::PUBLISH, MessageSeverity::INFO, msg.str());
+
         {{className}}::MqttMessage msg(topic, payload, qos, retain);
         boost::mutex::scoped_lock lock(_mutex);
         _msgQueue.push(msg);
     }
     else if (rc == MOSQ_ERR_SUCCESS)
     {
-        //cout << "Published message to " << topic << endl;
+        boost::format msg("Published to %1%") % topic;
+        Log(Message::PUBLISH, MessageSeverity::INFO, msg.str());
     }
 }
 
@@ -144,13 +188,17 @@ void {{className}}::Subscribe(const std::string& topic, int qos)
     int rc = mosquitto_subscribe(_mosq, NULL, topic.c_str(), qos);
     if (rc == MOSQ_ERR_NO_CONN)
     {
+        boost::format msg("Subscription queued to %1% because of no connection") % topic;
+        Log(Message::SUBSCRIPTION, MessageSeverity::INFO, msg.str());
+
         {{className}}::MqttSubscription sub(topic, qos);
         boost::mutex::scoped_lock lock(_mutex);
         _subscriptions.push(sub);
     }
     else if (rc == MOSQ_ERR_SUCCESS)
     {
-        //cout << "Subscribed to " << topic << endl;
+        boost::format msg("Subscribed to %1%") % topic;
+        Log(Message::SUBSCRIPTION, MessageSeverity::INFO, msg.str());
     }
 }
 
@@ -158,7 +206,9 @@ void {{className}}::AddMessageCallback(const std::function<void(const std::strin
 {
     boost::mutex::scoped_lock lock(_mutex);
     _messageCallbacks.push_back(cb);
-    //cout << "Message callback set" << endl;
+    
+    boost::format msg("Message callback has been added") % topic % subscr;
+    Log(MessageType::INTERNAL, MessageSeverity::INFO, msg.str());
 }
 
 bool {{className}}::TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const
@@ -167,8 +217,22 @@ bool {{className}}::TopicMatchesSubscription(const std::string& topic, const std
     int rc = mosquitto_topic_matches_sub(subscr.c_str(), topic.c_str(), &result);
     if (rc != MOSQ_ERR_SUCCESS)
     {
-        throw std::runtime_error("Mosquitto error");
+        boost::format msg("Error matching topic %1% to subscription %2%") % topic % subscr;
+        Log(MessageType::INTERNAL, MessageSeverity::ERROR, msg.str());
     }
     return result;
 
+}
+
+void {{className}}::RegisterLogCallback(const std::function<void(MessageType, MessageSeverity, const std::string&)& cb>)
+{
+    _logger = cb;
+}
+
+void {{className}}::Log(MessageType type, MessageSeverity lvl, const std::string& msg) const
+{
+    if (_logger)
+    {
+        _logger(type, lvl, msg);
+    }
 }
