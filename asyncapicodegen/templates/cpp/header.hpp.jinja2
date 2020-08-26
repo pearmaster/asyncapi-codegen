@@ -117,7 +117,7 @@ public:
     {%-set operation = channelItem.publish %}
 
     /*! {{operation.summary}}
-     * Publishes to `{{channelPath}}`{%if operation.GetRetain() is true%} with the retain flag{%endif%}
+     * Publishes to `{{channelPath}}`{%if operation.GetRetain() == True%} with the retain flag{%endif%}
      {%-if operation.description %}
      *
      {{operation.description | indent(5) | doxygenify }}
