@@ -12,7 +12,7 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/error/en.h"
 
-#include "{{resolver.cpp_get_lib_ns() | join("/")}}/exceptions.hpp"
+#include "{{resolver.cpp_get_lib_ns() | join("/")}}{%if resolver.cpp_get_lib_ns() %}/{%endif%}exceptions.hpp"
 
 {%-for inc in includes%}
 #include "{{inc}}"
