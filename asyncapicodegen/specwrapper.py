@@ -411,7 +411,7 @@ class SpecRoot(BaseDict):
         self.resolver = resolver
         self.name = name
 
-        if self.data['asyncapi'] != '2.0.0':
+        if self.data['asyncapi'] not in ['2.0.0', '2.2.0']:
             raise NotImplementedError
 
         if 'channels' in self.data:

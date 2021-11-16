@@ -17,12 +17,12 @@
 {{tag.description}}
 {%-for ch in spec.channels.values() if 'publish' in ch%}
 {%-if ch.publish.HasTag(tag.name)%}
- * [{{ch.publish.summary}}](#{{ch.publish.operationId}}) {{ch.publish.GetTagNote(tag.name)}}
+ * [{{ch.publish.summary or ch.publish.operationId}}](#{{ch.publish.operationId}}) {{ch.publish.GetTagNote(tag.name)}}
 {%-endif%}
 {%-endfor%}
 {%-for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-if ch.subscribe.HasTag(tag.name)%}
- * [{{ch.subscribe.summary}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
+ * [{{ch.subscribe.summary or ch.subscribe.operationId}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
 {%-endif%}
 {%-endfor%}
 {%endfor%}
@@ -31,7 +31,7 @@
 ## {{client |PascalCase}} may publish...
 {%for ch in spec.channels.values() if 'publish' in ch%}
 {%-set op = ch.publish %}<a name="{{op.operationId}}"></a>
-### {{op.summary or ch.operationId}}
+### {{op.summary or op.operationId}}
 ###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 
@@ -51,7 +51,7 @@
 ## {{client |PascalCase}} may subscribe...
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
-### {{op.summary or ch.operationId}}
+### {{op.summary or op.operationId}}
 ###### Operation ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 
