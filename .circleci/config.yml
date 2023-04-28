@@ -27,6 +27,9 @@ jobs:
       - run:
           name: "Generate C++ Provider Code"
           command: "mkdir output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name Streetlights --cpp --progtype provider"
+      - run:
+          name: "Run example C++ generating code"
+          command: "python examples/example_cpp.py"
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
