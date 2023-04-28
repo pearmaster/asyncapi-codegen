@@ -3,8 +3,9 @@ name: Docker Image CI
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+
+env:
+  DOCKER_IMAGE_NAME: pearmaster/asyncapi-codegen
 
 jobs:
 
@@ -14,5 +15,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag pearmaster/asyncapi-codegen:$(date +%s)
+    - name: Log into docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
