@@ -15,11 +15,15 @@ jobs:
     steps:
       - checkout
       - run:
+          name: install library
           command: |
             python setup.py install
       - run:
           name: "Generate C++"
           command: "mkdir output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name streetlights --cpp 1"
+      - run:
+          name: "Generate Markdown Docs"
+          command: "mkdir output_md && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_md --name streetlights --markdown 1"
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
