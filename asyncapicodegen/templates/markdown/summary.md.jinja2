@@ -17,12 +17,14 @@
 <a name="tag-{{tag.name}}"></a>
 ##### {{tag.name}}
 {{tag.description}}
-{%set tagItems = [] %}
-{%-set tagList %}
-{%-for ch in spec.channels.values() %}
-{%-set op = 'publish' in ch and ch.publish or ch.subscribe %}
-{%-if op.HasTag(tag.name)%}{%-do tagItems.append(tag.name) %}
- * [{{op.summary}}](#{{op.operationId}}) {{op.GetTagNote(tag.name)}}
+{%-for ch in spec.channels.values() if 'publish' in ch%}
+{%-if ch.publish.HasTag(tag.name)%}
+ * [{{ch.publish.summary or ch.publish.operationId}}](#{{ch.publish.operationId}}) {{ch.publish.GetTagNote(tag.name)}}
+{%-endif%}
+{%-endfor%}
+{%-for ch in spec.channels.values() if 'subscribe' in ch%}
+{%-if ch.subscribe.HasTag(tag.name)%}
+ * [{{ch.subscribe.summary or ch.subscribe.operationId}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
 {%-endif%}
 {%-endfor%}
 {%-endset%}
@@ -39,7 +41,7 @@
 ## Publish operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'publish' in ch%}
 {%-set op = ch.publish %}<a name="{{op.operationId}}"></a>
-### {{op.summary or ch.operationId}}
+### {{op.summary or op.operationId}}
 ###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 {%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
@@ -61,7 +63,7 @@
 ## Subscribe operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
-### {{op.summary or ch.operationId}}
+### {{op.summary or op.operationId}}
 ###### Operation ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
 {%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
