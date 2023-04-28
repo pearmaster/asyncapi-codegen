@@ -1,5 +1,7 @@
 # AsyncAPI Codegen
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/pearmaster/asyncapi-codegen/tree/master.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/pearmaster/asyncapi-codegen/tree/master)
+
 `asyncapi-codegen` interprets an AsyncAPI spec and generates code and documentation accordingly.   Only MQTT is supported.
 
 There are two parts to this:
