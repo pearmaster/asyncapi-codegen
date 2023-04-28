@@ -1,14 +1,40 @@
 # AsyncAPI Codegen
 
-This 3rd-party open source tool creates C++ interfaces according to AsyncAPI specifications.  Currently, only MQTT is supported.
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/pearmaster/asyncapi-codegen/tree/master.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/pearmaster/asyncapi-codegen/tree/master)
 
-## Python Generator
+`asyncapi-codegen` interprets an AsyncAPI spec and generates code and documentation accordingly.   Only MQTT is supported.
 
-The Python3 generator interprets a AsyncAPI specification and uses jinja2 templates to create a number of C++ sources and headers.
+There are two parts to this:
 
-The AsyncAPI must be format-decoded first, using a JSON or YAML parser.  The resulting parsed structure is then passed to the generator.
+ * Interpret the AsyncAPI spec into Python classes in ways that makes it easier to use.
+ * Use Jinja2 templates to create the code.
 
-The generator interprets the specification directly.  For example, if the specification defines a `publish` operation, the generator creates code for _publishing_.
+### Terminology
+
+With pub/sub architecture, the broker is a server and everything is a client to it.  As such, is is useful to define the general nature of clients to differentiate roles between clients.
+
+A **provider** is the MQTT service that provides functionality. The AsyncAPI spec describes the behavior of the provider.
+A **utilizer** is the MQTT client that consumes the functionality.  When the AsyncAPI spec uses "publish" and "subscribe" terms, it is the utilizer that does the described action.
+
+## Supported Languages
+
+| Lanaguage  | MQTT Library      | JSON Library    | JSON Schema Library              |
+|------------|-------------------|-----------------|----------------------------------|
+| C++        | Mosquitto Client  | rapidjson       | Built-in via json-schema-codegen |
+| Python     | Paho MQTT         | Python built-in | None                             |
+
+Features:
+
+| Feature                       | Python     | C++ |
+|-------------------------------|------------|-----|
+| Enforces JSON Schema          | No         | Yes |
+
+## Documentation Formats
+
+Formats:
+
+ * Markdown (with significant HTML), suitable for display on GitLab.
+ 
 
 #### Output files
 
@@ -32,23 +58,77 @@ pip3 install asyncapi-codegen
 
 See also [requirements.txt](./requirements.txt)
 
-* python 3.7
+* python 3.10
 * jinja2
 * stringcase
 * json-schema-codegen
 * pyyaml
 
-### Python requirements for generated python code
+## Python Code Generation
+
+### Requirements for the generated python code
 
 * python 3.7
 * parse
 * paho-mqtt
 
-### C++ requirements for generated code
+## C++ Code Generation 
+
+### Requirements for the generated C++ code
 
 * boost (boost::optional and boost::variant among others)
 * rapidjson 1.1
 * C++11
+
+## Using Docker
+
+### Utilizer code
+
+To generate utilizer/client C++ code for an AsyncAPI spec, you could run this docker command, carefully adjusting the volume mounting to the directory containing the specs and the directory for the output.  
+
+When the YAML uses the words "publish" and "subscribe", the utilizer will perform those MQTT actions.
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights \
+        --cpp
+```
+
+### Provider code
+
+If you'd like instead to generate C++ code for the provider, you can append `--progtype provider` to the docker command to look like:
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights \
+        --cpp \
+        --progtype provider
+```
+
+### Markdown documentation
+
+This command will generate documentation for utilizers.  The entire spec is output in one big markdown file.  
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights
+        --markdown
+```
 
 ## License
 

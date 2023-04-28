@@ -1,13 +1,16 @@
 import asyncapicodegen.python_client as pygen
-import sys
+import os
 import yaml
 import stringcase
-from pprint import pprint
-import urllib.request
 
 if __name__ == '__main__':
 
-    with urllib.request.urlopen("https://raw.githubusercontent.com/asyncapi/asyncapi/master/examples/2.0.0/streetlights.yml") as fp:
+    this_directory = os.path.dirname(os.path.abspath(__file__))
+    output_directory = os.path.join(this_directory, "output_py")
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    with open(os.path.join(this_directory, "streetlights-mqtt.yml")) as fp:
         spec = yaml.load(fp, Loader=yaml.FullLoader)
 
     # Dumb yaml importer interprets "on"/"off" as True/False
@@ -16,5 +19,5 @@ if __name__ == '__main__':
     name = 'streetlights'
 
     resolver = pygen.SimpleResolver(name)
-    pyGenerator = pygen.GeneratorFromAsyncApi("output", resolver)
+    pyGenerator = pygen.GeneratorFromAsyncApi(output_directory, resolver)
     pyGenerator.Generate(spec, stringcase.pascalcase(name), name)

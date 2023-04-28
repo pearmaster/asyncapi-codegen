@@ -31,4 +31,7 @@ setup(name='asyncapi-codegen',
       install_requires=requirements,
       include_package_data=True,
       python_requires='>=3.7',
+      scripts=[
+          'bin/asyncapi-codegen',
+      ]
 )

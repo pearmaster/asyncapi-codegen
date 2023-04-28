@@ -10,7 +10,6 @@ import argparse
 import urllib.request
 import ruamel.yaml as yaml
 
-
 assert(sys.version_info.major == 3 and sys.version_info.minor >= 7), "Requires Python 3.7 or later"
 
 if __name__ == '__main__':
@@ -24,11 +23,10 @@ if __name__ == '__main__':
     parser.add_argument("--progtype", type=str, choices=["provider", "utilizer", "library"], default="provider")
 
     lang = parser.add_mutually_exclusive_group(required=True)
-    lang.add_argument("--cpp", help="Generated C++ code", action='store_true')
-#    lang.add_argument("--python", help="Generate Python3 code", action='store_true')
-    lang.add_argument("--python-package", help="Generate Python3 package", action='store_true')
-    lang.add_argument("--markdown", help="Generate Markdown Documentation", action='store_true')
-
+    lang.add_argument("--cpp", action="store_true", help="Generated C++ code")
+#    lang.add_argument("--python", action="store_true", help="Generate Python3 code")
+    lang.add_argument("--python-package", action="store_true", help="Generate Python3 package")
+    lang.add_argument("--markdown", action="store_true", help="Generate Markdown Documentation")
     args = parser.parse_args()
     args.python = False # This needs to be removed when python as a non-package is supported
 

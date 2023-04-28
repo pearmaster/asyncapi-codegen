@@ -235,7 +235,7 @@ class ChannelItem(BaseDict):
     def GetPathParameters(self):
         pattern = r"\{\w+\}"
         results = re.findall(pattern, self.channelPath)
-        assert(len(results) == len(self.Parameters())), f"Mismatch of parameters from {self.GetName()}"
+        assert(len(results) == len(self.Parameters())), f"Mismatch of parameters from {self.GetName()}.  The path indicated {len(results)}, but we only found {len(self.Parameters())} parameters defined.  {self}"
         return results
 
     def GetSubscribePath(self):
@@ -424,8 +424,8 @@ class SpecRoot(BaseDict):
         self.resolver = resolver
         self.name = name
 
-        if self.data['asyncapi'] not in ['2.0.0', '2.2.0']:
-            raise NotImplementedError
+        if not self.data['asyncapi'].startswith('2'):
+            raise NotImplementedError(f"The AsyncAPI version {self.data['asyncapi']} is not supported")
 
         if 'channels' in self.data:
             self.data['channels'] = Channels(self, self.data['channels'])
@@ -452,19 +452,25 @@ class SpecRoot(BaseDict):
         return f"Spec<{self.name}>"
 
 def invert_spec(initialdata):
-    data = {}
-    theKeys = [ k for k in initialdata.keys() if k != 'channels' ]
+    data = dict()
+    theKeys = list(initialdata.keys())
+    theKeys.remove('channels')
     for k in theKeys:
         data[k] = initialdata[k]
     data['channels'] = {}
-    for t in initialdata['channels']:
-        assert('$ref' not in initialdata['channels'][t]), "$ref to channel item not supported"
-        data['channels'][t] = {}
-        channelItemProps = [ k for k in data['channels'][t].keys() if k not in ['subscribe', 'publish'] ]
-        for p in channelItemProps:
-            data['channels'][t][p] = initialdata['channels'][t][p]
-        if 'publish' in initialdata['channels'][t]:
-            data['channels'][t]['subscribe'] = initialdata['channels'][t]['publish']
-        if 'subscribe' in initialdata['channels'][t]:
-            data['channels'][t]['publish'] = initialdata['channels'][t]['subscribe']
+    for channel_topic in initialdata['channels']:
+        if '$ref' in initialdata['channels'][channel_topic]:
+            raise NotImplementedError("$ref to channel item not supported")
+        data['channels'][channel_topic] = dict()
+        channel_item_fields = list(initialdata['channels'][channel_topic].keys())
+        if 'subscribe' in channel_item_fields:
+            channel_item_fields.remove('subscribe')
+        if 'publish' in channel_item_fields:
+            channel_item_fields.remove('publish')
+        for field_name in channel_item_fields:
+            data['channels'][channel_topic][field_name] = initialdata['channels'][channel_topic][field_name]
+        if 'publish' in initialdata['channels'][channel_topic]:
+            data['channels'][channel_topic]['subscribe'] = initialdata['channels'][channel_topic]['publish']
+        if 'subscribe' in initialdata['channels'][channel_topic]:
+            data['channels'][channel_topic]['publish'] = initialdata['channels'][channel_topic]['subscribe']
     return data
