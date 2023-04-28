@@ -9,6 +9,13 @@ There are two parts to this:
  * Interpret the AsyncAPI spec into Python classes in ways that makes it easier to use.
  * Use Jinja2 templates to create the code.
 
+### Terminology
+
+With pub/sub architecture, the broker is a server and everything is a client to it.  As such, is is useful to define the general nature of clients to differentiate roles between clients.
+
+A **provider** is the MQTT service that provides functionality. The AsyncAPI spec describes the behavior of the provider.
+A **utilizer** is the MQTT client that consumes the functionality.  When the AsyncAPI spec uses "publish" and "subscribe" terms, it is the utilizer that does the described action.
+
 ## Supported Languages
 
 | Lanaguage  | MQTT Library      | JSON Library    | JSON Schema Library              |
@@ -72,6 +79,56 @@ See also [requirements.txt](./requirements.txt)
 * boost (boost::optional and boost::variant among others)
 * rapidjson 1.1
 * C++11
+
+## Using Docker
+
+### Utilizer code
+
+To generate utilizer/client C++ code for an AsyncAPI spec, you could run this docker command, carefully adjusting the volume mounting to the directory containing the specs and the directory for the output.  
+
+When the YAML uses the words "publish" and "subscribe", the utilizer will perform those MQTT actions.
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights \
+        --cpp
+```
+
+### Provider code
+
+If you'd like instead to generate C++ code for the provider, you can append `--progtype provider` to the docker command to look like:
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights \
+        --cpp \
+        --progtype provider
+```
+
+### Markdown documentation
+
+This command will generate documentation for utilizers.  The entire spec is output in one big markdown file.  
+
+```sh
+docker run --rm -t \
+    -v $(pwd)/examples:/specs \
+    -v $(pwd)/output:/output \
+    --user $UID:$GID \
+    docker.io/pearmaster/asyncapi-codegen:latest \
+        --yaml /specs/streetlights-mqtt.yml \
+        --name Streetlights
+        --markdown
+```
 
 ## License
 
