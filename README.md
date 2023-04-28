@@ -1,14 +1,31 @@
 # AsyncAPI Codegen
 
-This 3rd-party open source tool creates C++ interfaces according to AsyncAPI specifications.  Currently, only MQTT is supported.
+`asyncapi-codegen` interprets an AsyncAPI spec and generates code and documentation accordingly.   Only MQTT is supported.
 
-## Python Generator
+There are two parts to this:
 
-The Python3 generator interprets a AsyncAPI specification and uses jinja2 templates to create a number of C++ sources and headers.
+ * Interpret the AsyncAPI spec into Python classes in ways that makes it easier to use.
+ * Use Jinja2 templates to create the code.
 
-The AsyncAPI must be format-decoded first, using a JSON or YAML parser.  The resulting parsed structure is then passed to the generator.
+## Supported Languages
 
-The generator interprets the specification directly.  For example, if the specification defines a `publish` operation, the generator creates code for _publishing_.
+| Lanaguage  | MQTT Library      | JSON Library    | JSON Schema Library              |
+|------------|-------------------|-----------------|----------------------------------|
+| C++        | Mosquitto Client  | rapidjson       | Built-in via json-schema-codegen |
+| Python     | Paho MQTT         | Python built-in | None                             |
+
+Features:
+
+| Feature                       | Python     | C++ |
+|-------------------------------|------------|-----|
+| Enforces JSON Schema          | No         | Yes |
+
+## Documentation Formats
+
+Formats:
+
+ * Markdown (with significant HTML), suitable for display on GitLab.
+ 
 
 #### Output files
 
@@ -32,19 +49,23 @@ pip3 install asyncapi-codegen
 
 See also [requirements.txt](./requirements.txt)
 
-* python 3.7
+* python 3.10
 * jinja2
 * stringcase
 * json-schema-codegen
 * pyyaml
 
-### Python requirements for generated python code
+## Python Code Generation
+
+### Requirements for the generated python code
 
 * python 3.7
 * parse
 * paho-mqtt
 
-### C++ requirements for generated code
+## C++ Code Generation 
+
+### Requirements for the generated C++ code
 
 * boost (boost::optional and boost::variant among others)
 * rapidjson 1.1

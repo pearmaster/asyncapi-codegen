@@ -411,8 +411,8 @@ class SpecRoot(BaseDict):
         self.resolver = resolver
         self.name = name
 
-        if self.data['asyncapi'] not in ['2.0.0', '2.2.0']:
-            raise NotImplementedError
+        if not self.data['asyncapi'].startswith('2'):
+            raise NotImplementedError(f"The AsyncAPI version {self.data['asyncapi']} is not supported")
 
         if 'channels' in self.data:
             self.data['channels'] = Channels(self, self.data['channels'])
