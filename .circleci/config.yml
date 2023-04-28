@@ -19,11 +19,17 @@ jobs:
           command: |
             python setup.py install
       - run:
-          name: "Generate C++"
-          command: "mkdir output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name streetlights --cpp 1"
+          name: "Generate C++ Utilizer Code"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name Streetlights --cpp"
       - run:
           name: "Generate Markdown Docs"
-          command: "mkdir output_md && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_md --name streetlights --markdown 1"
+          command: "mkdir -p output_md && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_md --name Streetlights --markdown"
+      - run:
+          name: "Generate C++ Provider Code"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name Streetlights --cpp --progtype provider"
+      - run:
+          name: "Run example C++ generating code"
+          command: "python examples/example_cpp.py"
 
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows

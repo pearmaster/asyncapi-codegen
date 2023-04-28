@@ -11,7 +11,6 @@ import argparse
 import urllib.request
 import ruamel.yaml as yaml
 
-
 assert(sys.version_info.major == 3 and sys.version_info.minor >= 7), "Requires Python 3.7 or later"
 
 if __name__ == '__main__':
@@ -25,10 +24,10 @@ if __name__ == '__main__':
     parser.add_argument("--name", type=str, help="Name of the class that is generated", required=True)
     parser.add_argument("--progtype", type=str, choices=["provider", "utilizer"], default="utilizer")
     lang = parser.add_mutually_exclusive_group(required=True)
-    lang.add_argument("--cpp", help="Generated C++ code")
-    lang.add_argument("--python", help="Generate Python3 code")
-    lang.add_argument("--python-package", help="Generate Python3 package")
-    lang.add_argument("--markdown", help="Generate Markdown Documentation")
+    lang.add_argument("--cpp", action="store_true", help="Generated C++ code")
+    lang.add_argument("--python", action="store_true", help="Generate Python3 code")
+    lang.add_argument("--python-package", action="store_true", help="Generate Python3 package")
+    lang.add_argument("--markdown", action="store_true", help="Generate Markdown Documentation")
     args = parser.parse_args()
 
     spec = None
