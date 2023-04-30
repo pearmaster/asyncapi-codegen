@@ -20,13 +20,13 @@ jobs:
             python setup.py install
       - run:
           name: "Generate C++ Utilizer Code"
-          command: "mkdir -p output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name Streetlights --cpp"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp"
       - run:
           name: "Generate Markdown Docs"
-          command: "mkdir -p output_md && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_md --name Streetlights --markdown"
+          command: "mkdir -p output_md && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_md --name Streetlights --markdown"
       - run:
           name: "Generate C++ Provider Code"
-          command: "mkdir -p output_cpp && bin/asyncapi-codegen --yaml examples/streetlights-mqtt.yml --output output_cpp --name Streetlights --cpp --progtype provider"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp --progtype provider"
       - run:
           name: "Run example C++ generating code"
           command: "python examples/example_cpp.py"
