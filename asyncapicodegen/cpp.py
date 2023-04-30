@@ -19,9 +19,17 @@ class GeneratedFiles(object):
             self.hpp.append(hppFile)
 
     def __iadd__(self, other):
-        assert(isinstance(other, type(self)))
-        self.cpp.extend(other.cpp)
-        self.hpp.extend(other.hpp)
+        assert(isinstance(other, type(self)) or len(other) == 2)
+        if isinstance(other, type(self)):
+            self.cpp.extend(other.cpp)
+            self.hpp.extend(other.hpp)
+        elif len(other) == 2:
+            if other[0] is not None:
+                self.cpp.append(other[0])
+            if other[1] is not None:
+                self.hpp.append(other[1])
+        else:
+            raise "Runtime error"
         return self
 
 
@@ -68,6 +76,7 @@ class GeneratorFromAsyncApi(object):
         self.headerGenerator = templator.CodeTemplator(self.output_dir['header'])
         self.headerGenerator.add_template_package('asyncapicodegen.templates.cpp')
         self.headerGenerator.add_template_package('jsonschemacodegen.templates.cpp')
+        self.library_generator = jsonschemacodegen.cpp.LibraryGenerator(src_output_dir, header_output_dir, resolver)
 
     def GenerateSchemasForType(self, spec, url, itemType, getSchemaFunc):
         assert(isinstance(spec, specwrapper.SpecRoot))
@@ -148,4 +157,5 @@ class GeneratorFromAsyncApi(object):
             codegenDate=datetime.datetime.now().strftime("%c"),
             spec=wrappedSpec)
         genFiles += GeneratedFiles(hppFile=headerFilename)
+        genFiles += self.library_generator.Generate()
         return genFiles
