@@ -64,6 +64,22 @@ class Parameter(BaseDict):
                 return 'bool'
         raise NotImplementedError
 
+    def get_c_type(self, resolver):
+        data_type = "int"
+        if '$ref' in self.data:
+            param = self.root.Resolve(self.data['$ref'], Parameter, name=self.name)
+            return param.get_c_type(resolver)
+        elif 'schema' in self.data and 'type' in self.data['schema']:
+            if self.data['schema']['type'] == 'integer':
+                data_type = 'int'
+            elif self.data['schema']['type'] == 'number':
+                data_type = 'float'
+            elif self.data['schema']['type'] == 'string':
+                data_type = 'char *'
+            elif self.data['schema']['type'] == 'boolean':
+                data_type = 'int'
+        return data_type
+
     def GetEnglishType(self, resolver):
         thedata = self.data
         if '$ref' in self.data:

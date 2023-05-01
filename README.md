@@ -21,8 +21,8 @@ A **utilizer** is the MQTT client that consumes the functionality.  When the Asy
 | Lanaguage  | MQTT Library      | JSON Library    | JSON Schema Library              |
 |------------|-------------------|-----------------|----------------------------------|
 | C++        | Mosquitto Client  | rapidjson       | Built-in via json-schema-codegen |
-| Python     | Paho MQTT         | Python built-in | None                             |
-| C          | None              | None            | None                             |         
+| Python     | Paho MQTT (Python)| Python built-in | None                             |
+| C          | Paho MQTT (C)     | [Jansson](https://jansson.readthedocs.io/en/latest/) | None                             |         
 
 ### Features
 

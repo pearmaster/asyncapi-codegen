@@ -1,6 +1,12 @@
+{%include 'file_prologue.jinja2'%}
 
 #include "topics.h"
 
 {%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'publish' in channelItem %}
 const char *{{channelItem.GetName() | CONST_CASE}}_TOPIC = "{{channelItem.get_path_as_c_format_string()}}";
+{%endif%}
+{%-if 'subscribe' in channelItem %}
+const char *{{channelItem.GetName() | CONST_CASE}}_SUB_TOPIC = "{{channelItem.GetSubscribePath()}}";
+{%endif%}
 {%-endfor%}

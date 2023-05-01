@@ -1,0 +1,29 @@
+{%include 'file_prologue.jinja2'%}
+
+#include <jansson.h>
+
+#include "topics.h"
+#include "mqtt_client.h"
+
+{%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'publish' in channelItem %}
+{%-set operation = channelItem.publish %}
+{%-set retain %}{%if operation.GetRetain() is true%}1{%else%}0{%endif%}{%endset%}
+void publish_{{channelItem.GetName() | snake_case}}(MqttClient *client, json_t *payload{%for pp in channelItem.GetPathParameters()%}{%set path_param = pp|strip("{}")%}, {{channelItem['parameters'][path_param].get_c_type(resolver)}} {{path_param}}{%endfor%})
+{
+    int topic_len = snprintf(NULL, 0, {{channelItem.GetName() | CONST_CASE}}_TOPIC, {%for pp in channelItem.GetPathParameters()%}{{pp|strip("{}")}}{%endfor%});
+    char *topic_ptr = malloc(topic_len + 1);
+    snprintf(topic_ptr, topic_len + 1, {{channelItem.GetName() | CONST_CASE}}_TOPIC, {%for pp in channelItem.GetPathParameters()%}{{pp|strip("{}")}}{%endfor%});
+
+    char *payload_ptr = json_dumps(payload, 0);
+
+    MQTTMessage pub_msg;
+    pub_msg.payload = payload_ptr;
+    pub_msg.qos = QOS{{operation.GetQoS(default='1')}};
+    pub_msg.retained = {{retain}};
+    MQTTPublish(client->client, topic_ptr, &pub_msg);
+    free(topic_ptr);
+    free(payload_ptr)
+}
+{%endif%}
+{%-endfor%}

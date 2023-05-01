@@ -1,6 +1,12 @@
+{%include 'file_prologue.jinja2'%}
 
 #pragma once
 
 {%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'subscribe' in channelItem %}
+extern const char *{{channelItem.GetName() | CONST_CASE}}_SUB_TOPIC;
+{%endif%}
+{%-if 'publish' in channelItem %}
 extern const char *{{channelItem.GetName() | CONST_CASE}}_TOPIC;
+{%endif%}
 {%-endfor%}

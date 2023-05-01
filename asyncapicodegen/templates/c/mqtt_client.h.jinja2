@@ -1,0 +1,18 @@
+{%include 'file_prologue.jinja2'%}
+
+#pragma once
+
+typedef struct
+{
+{%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'subscribe' in channelItem %}
+    void (*{{channelItem.GetName() | snake_case }}_callback)(const char* topic, const char* payload, size_t payload_len);
+{%endif%}
+{%-endfor%}
+} MqttClient;
+
+{%for channelPath, channelItem in spec.channels.items() %}
+{%-if 'publish' in channelItem %}
+void publish_{{channelItem.GetName() | snake_case}}(MqttClient *client, json_t *payload{%for pp in channelItem.GetPathParameters()%}{%set path_param = pp|strip("{}")%}, {{channelItem['parameters'][path_param].get_c_type(resolver)}} {{path_param}}{%endfor%});
+{%endif%}
+{%-endfor%}

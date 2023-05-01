@@ -22,6 +22,8 @@ class Generator(object):
         for output_name in [
             'topics.h',
             'topics.c',
+            'mqtt_client.c',
+            'mqtt_client.h',
         ]:
 
             template_name = f"{output_name}.jinja2"
