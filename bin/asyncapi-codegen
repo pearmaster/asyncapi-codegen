@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument("--name", type=str, help="Name of the class that is generated", required=True)
     parser.add_argument("--progtype", type=str, choices=["provider", "utilizer"], default="utilizer")
     parser.add_argument("--verbose", action="store_true", help="Display generated files")
+    parser.add_argument("--example", action="store_true", help="Generate an example main()")
 
     lang = parser.add_mutually_exclusive_group(required=True)
     lang.add_argument("--cpp", action="store_true", help="Generated C++ code")
@@ -55,11 +56,13 @@ if __name__ == '__main__':
         generator = cpp.GeneratorFromAsyncApi(src_dir, inc_dir, resolver)
         result = generator.Generate(spec, args.name)
         cppList = result.cpp
-        for cpp_file in cppList:
-            print(cpp_file)
+        if args.verbose:
+            for cpp_file in cppList:
+                print(cpp_file)
         hppList = result.hpp
-        for hpp_file in hppList:
-            print(hpp_file)
+        if args.verbose:
+            for hpp_file in hppList:
+                print(hpp_file)
 
         with open(os.path.join(args.output_dir, 'sources.cmake'), 'w') as fp:
             fp.write(f"set({args.name}_sources\n")
@@ -74,6 +77,11 @@ if __name__ == '__main__':
             for c in hppList:
                 fp.write("{}\n".format(c))
             fp.write(")\n")
+
+        if args.example:
+            example_name = generator.generate_example(spec, args.name)
+            if args.verbose:
+                print(example_name)
 
     elif args.python or args.python_package:
         output_dir = args.output_dir

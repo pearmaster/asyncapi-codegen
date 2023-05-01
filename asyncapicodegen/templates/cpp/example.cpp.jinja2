@@ -1,0 +1,12 @@
+{%include 'file_prologue.jinja2'%}
+{%-import 'loader.jinja2' as loader-%}
+
+#include "{{resolver.cpp_get_client_filename_base(spec, Name)}}.hpp"
+
+#include "{{resolver.cpp_get_lib_ns() | join("/")}}{%if resolver.cpp_get_lib_ns() %}/{%endif%}exceptions.hpp"
+
+int main(int argc, char **argv)
+{
+
+    return 0;
+}

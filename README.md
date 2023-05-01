@@ -28,6 +28,7 @@ Features:
 | Feature                       | Python     | C++ |
 |-------------------------------|------------|-----|
 | Enforces JSON Schema          | No         | Yes |
+| Example main() method         | No         | Yes |
 
 ## Documentation Formats
 
@@ -58,7 +59,7 @@ pip3 install asyncapi-codegen
 
 See also [requirements.txt](./requirements.txt)
 
-* python 3.10
+* Python 3.10+
 * jinja2
 * stringcase
 * json-schema-codegen
@@ -66,7 +67,7 @@ See also [requirements.txt](./requirements.txt)
 
 ## Python Code Generation
 
-### Requirements for the generated python code
+### Requirements for running the generated python code
 
 * python 3.7
 * parse

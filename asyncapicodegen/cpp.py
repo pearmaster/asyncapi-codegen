@@ -127,6 +127,20 @@ class GeneratorFromAsyncApi(object):
                 genFiles += GeneratedFiles(hppFile=headerFilename)
         return genFiles
 
+    def generate_example(self, wrapped_spec: dict, class_name):
+        assert(isinstance(wrapped_spec, dict))
+        source_filename = f"{class_name}_example.cpp"
+        self.srcGenerator.render_template(template_name="example.cpp.jinja2", 
+            output_name=source_filename, 
+            usings=self.usings,
+            ns=self.namespace, 
+            resolver=self.resolver,
+            Name=class_name,
+            codegenVersion=_version.__version__,
+            codegenDate=datetime.datetime.now().strftime("%c"),
+            spec=wrapped_spec)
+        return source_filename
+
     def Generate(self, spec, class_name):
         assert(isinstance(spec, dict))
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)

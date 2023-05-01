@@ -9,7 +9,7 @@ jobs:
     # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/configuration-reference/#executor-job
     docker:
-      - image: python:3.10
+      - image: python:3.10-buster
     # Add steps to the job
     # See: https://circleci.com/docs/configuration-reference/#steps
     steps:
@@ -20,13 +20,13 @@ jobs:
             python setup.py install
       - run:
           name: "Generate C++ Utilizer Code"
-          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp --example"
       - run:
           name: "Generate Markdown Docs"
           command: "mkdir -p output_md && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_md --name Streetlights --markdown"
       - run:
           name: "Generate C++ Provider Code"
-          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp --progtype provider"
+          command: "mkdir -p output_cpp && bin/asyncapi-codegen --spec examples/streetlights-mqtt.yml --output_dir output_cpp --name Streetlights --cpp --progtype provider --example"
       - run:
           name: "Run example C++ generating code"
           command: "python examples/example_cpp.py"
