@@ -453,14 +453,14 @@ class SpecRoot(BaseDict):
             return self.resolver.get_schema(ref, root=otherRoot)
 
     def get_example_server(self) -> ServerObject|None:
-        for server_key, server_obj in self.data['servers']:
+        for server_key, server_obj in self.data['servers'].items():
             if server_key.lower() == 'test':
                 return server_obj
             if server_key.lower() == 'example':
                 return server_obj
             if 'x-example' in server_obj and server_obj['x-example'] is True:
                 return server_obj
-        return
+        return None
     
     def create_example_server(self) -> ServerObject:
         example_server_obj = {

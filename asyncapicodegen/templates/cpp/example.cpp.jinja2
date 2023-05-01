@@ -5,8 +5,15 @@
 
 #include "{{resolver.cpp_get_lib_ns() | join("/")}}{%if resolver.cpp_get_lib_ns() %}/{%endif%}exceptions.hpp"
 
+{%if spec.get_example_server() is none%}
+#include "server_{{spec.create_example_server().name |lower}}.hpp"
+{%endif%}
+
 int main(int argc, char **argv)
 {
+    auto broker = {{spec.create_example_server().name |lower}}BrokerConnection("uuid", "example", 1883);
+
+    auto 
 
     return 0;
 }

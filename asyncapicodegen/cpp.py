@@ -127,8 +127,17 @@ class GeneratorFromAsyncApi(object):
                 genFiles += GeneratedFiles(hppFile=headerFilename)
         return genFiles
 
-    def generate_example(self, wrapped_spec: dict, class_name):
-        assert(isinstance(wrapped_spec, dict))
+    def generate_example(self, spec: dict, class_name):
+        assert(isinstance(spec, dict))
+        wrapped_spec = specwrapper.SpecRoot(spec, self.resolver)
+
+        example_server = wrapped_spec.get_example_server()
+        if example_server is None:
+            example_server = wrapped_spec.create_example_server()
+
+            fake_spec = {"servers":{"example":example_server}}
+            self.GenerateServers(fake_spec, "")
+
         source_filename = f"{class_name}_example.cpp"
         self.srcGenerator.render_template(template_name="example.cpp.jinja2", 
             output_name=source_filename, 
@@ -138,7 +147,8 @@ class GeneratorFromAsyncApi(object):
             Name=class_name,
             codegenVersion=_version.__version__,
             codegenDate=datetime.datetime.now().strftime("%c"),
-            spec=wrapped_spec)
+            spec=wrapped_spec,
+            server=example_server)
         return source_filename
 
     def Generate(self, spec, class_name):
