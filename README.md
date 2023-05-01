@@ -22,12 +22,13 @@ A **utilizer** is the MQTT client that consumes the functionality.  When the Asy
 |------------|-------------------|-----------------|----------------------------------|
 | C++        | Mosquitto Client  | rapidjson       | Built-in via json-schema-codegen |
 | Python     | Paho MQTT         | Python built-in | None                             |
+| C          | None              | None            | None                             |         
 
-Features:
+### Features
 
-| Feature                       | Python     | C++ |
-|-------------------------------|------------|-----|
-| Enforces JSON Schema          | No         | Yes |
+| Feature                       | Python     | C++ | C    |
+|-------------------------------|------------|-----|------|
+| Enforces JSON Schema          | No         | Yes | No   |
 
 ## Documentation Formats
 
@@ -48,7 +49,7 @@ The generator creates the following types of output files:
 
 Generated code files should be annotated for **doxygen** document generation, or at least that is the goal.
 
-### Installation
+## Installation
 
 ```sh
 pip3 install asyncapi-codegen
@@ -79,6 +80,12 @@ See also [requirements.txt](./requirements.txt)
 * boost (boost::optional and boost::variant among others)
 * rapidjson 1.1
 * C++11
+
+## C Language Generation
+
+This is a work in progress, and will likely never be full featured.
+
+Currently, only C format topic strings are generated.
 
 ## Using Docker
 

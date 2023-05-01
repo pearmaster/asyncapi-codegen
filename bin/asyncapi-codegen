@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from asyncapicodegen import cpp, specwrapper, python_client, markdown_summary
+from asyncapicodegen import cpp, specwrapper, python_client, markdown_summary, c_lang
 import stringcase
 import sys
 import os
@@ -11,6 +11,16 @@ import urllib.request
 import ruamel.yaml as yaml
 
 assert(sys.version_info.major == 3 and sys.version_info.minor >= 7), "Requires Python 3.7 or later"
+
+def handle_markdown_generate(args, spec):
+    resolver = cpp.SimpleResolver(args.name)
+    outname = os.path.join(args.output_dir, f"{args.name}.md")
+    docGenerator = markdown_summary.GeneratorFromAsyncApi(outname, resolver)
+    docGenerator.Generate(spec)
+
+def handle_c_generate(args, spec):
+    generator = c_lang.Generator(args.output_dir)
+    generator.generate(spec)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate AsyncAPI Code")
@@ -25,6 +35,7 @@ if __name__ == '__main__':
 
     lang = parser.add_mutually_exclusive_group(required=True)
     lang.add_argument("--cpp", action="store_true", help="Generated C++ code")
+    lang.add_argument("--c", action="store_true", help="Generated C code")
 #    lang.add_argument("--python", action="store_true", help="Generate Python3 code")
     lang.add_argument("--python-package", action="store_true", help="Generate Python3 package")
     lang.add_argument("--markdown", action="store_true", help="Generate Markdown Documentation")
@@ -75,6 +86,9 @@ if __name__ == '__main__':
                 fp.write("{}\n".format(c))
             fp.write(")\n")
 
+    elif args.c:
+        handle_c_generate(args, spec)
+
     elif args.python or args.python_package:
         output_dir = args.output_dir
         if args.python_package:
@@ -98,8 +112,5 @@ if __name__ == '__main__':
             print(pySetupGenerator.GenerateSetup(spec, args.name))
 
     elif args.markdown:
-        resolver = cpp.SimpleResolver(args.name)
-        outname = os.path.join(args.output_dir, f"{args.name}.md")
-        docGenerator = markdown_summary.GeneratorFromAsyncApi(outname, resolver)
-        docGenerator.Generate(spec)
+        handle_markdown_generate(args, spec)
 

@@ -1,0 +1,6 @@
+
+#include "topics.h"
+
+{%for channelPath, channelItem in spec.channels.items() %}
+const char *{{channelItem.GetName() | CONST_CASE}}_TOPIC = "{{channelItem.get_path_as_c_format_string()}}";
+{%-endfor%}

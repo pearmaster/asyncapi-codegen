@@ -38,6 +38,20 @@ class Parameter(BaseDict):
                 schema = param['schema']
         return schema
 
+    def get_c_format_string_type(self, resolver):
+        format_type = "%s"
+        if '$ref' in self.data:
+            param = self.root.Resolve(self.data['$ref'], Parameter, name=self.name)
+            return param.get_c_format_string_type(resolver)
+        elif 'schema' in self.data and 'type' in self.data['schema']:
+            if self.data['schema']['type'] == 'integer':
+                format_type = '%d'
+            elif self.data['schema']['type'] == 'number':
+                format_type = '%f'
+            elif self.data['schema']['type'] == 'string':
+                format_type = '%s'
+        return format_type
+
     def GetType(self, resolver):
         if '$ref' in self.data:
             return resolver.cpp_get_ns_name(self.data['$ref'])
@@ -224,12 +238,23 @@ class ChannelItem(BaseDict):
 
     def GetPathAsBoostFormat(self):
         if '%' in self.channelPath:
-            raise NotImplementedError
+            raise NotImplementedError("Code doesn't yet know what to do with a '%' in the channel path")
         pattern = r"\{\w+\}"
         def repl(_):
             repl.i += 1
             return f"%{repl.i}%"
         repl.i = 0
+        return re.sub(pattern, repl, self.channelPath)
+
+    def get_path_as_c_format_string(self):
+        if '%' in self.channelPath:
+            raise NotImplementedError("Code doesn't yet know what to do with a '%' in the channel path")
+        pattern = r"\{\w+\}"
+        def repl(match):
+            found = match.group().strip('{}')
+            if found in self.data['parameters']:
+                return self.data['parameters'][found].get_c_format_string_type(self.root.resolver)
+            return "%s"
         return re.sub(pattern, repl, self.channelPath)
 
     def GetPathParameters(self):

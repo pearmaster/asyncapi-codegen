@@ -1,0 +1,6 @@
+
+#pragma once
+
+{%for channelPath, channelItem in spec.channels.items() %}
+extern const char *{{channelItem.GetName() | CONST_CASE}}_TOPIC;
+{%-endfor%}
