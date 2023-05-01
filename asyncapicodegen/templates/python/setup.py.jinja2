@@ -9,7 +9,7 @@ setup(name='{{resolver.py_package_name()}}',
       description="{{spec.info.title}}",
       long_description="""{{spec.info.description}}""",
       long_description_content_type="text/markdown",
-      license='{{spec.info.license.name}}',
+      license='{{"license" in spec.info and spec.info.license.name or "proprietary"}}',
       packages=[
           '{{resolver.py_package_base()}}',
           '{{resolver.py_package_base()}}.messages',

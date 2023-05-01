@@ -7,6 +7,7 @@ from . import specwrapper
 from . import python_summary
 import jsonschemacodegen.python
 import jsonschemacodegen.resolver
+import os.path
 
 
 class SimpleResolver(python_summary.SimpleResolver):
@@ -42,6 +43,11 @@ class PackageResolver(SimpleResolver):
     def py_package_name(self):
         return "asyncapi-client"
 
+    def py_test_filename(self, reference):
+        simple_filename = super().py_test_filename(reference)
+        return os.path.join(f"tests", simple_filename)
+
+
 class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
 
     def Generate(self, spec, class_name, filename_base):
@@ -66,13 +72,10 @@ class GeneratorFromAsyncApi(python_summary.GeneratorFromAsyncApi):
     def GenerateSetup(self, spec, class_name):
         assert(isinstance(spec, dict))
         wrappedSpec = specwrapper.SpecRoot(spec, self.resolver)
-        clientType = 'x-client-role' in wrappedSpec and wrappedSpec['x-client-role'] or 'client'
-        print(f"Generating setup for {clientType}")
-        if clientType in ['provider', 'utilizer', 'library']:
-            self.generator.render_template(template_name="setup.py.jinja2", 
-                    output_name="setup.py", 
-                    Name = "{}".format(stringcase.pascalcase(class_name)),
-                    spec = wrappedSpec,
-                    resolver=self.resolver)
+        return self.generator.render_template(template_name="setup.py.jinja2", 
+                output_name="setup.py", 
+                Name = "{}".format(stringcase.pascalcase(class_name)),
+                spec = wrappedSpec,
+                resolver=self.resolver)
 
 

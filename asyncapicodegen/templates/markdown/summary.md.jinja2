@@ -1,6 +1,6 @@
 {%-macro ParamList(ch)-%}
 {%-for paramName, paramObj in ch.Parameters()-%}
- * **{{paramName}}** {%if paramObj.GetEnglishType(resolver) %}is a *{{paramObj.GetEnglishType(resolver)}}*{%endif%}
+ * **{{paramName}}** {{paramObj.Resolve().description | replace("\n", " ")}} {%if paramObj.GetEnglishType(resolver) %} - Its value must be {{paramObj.GetEnglishType(resolver)}}{%endif%}
 {%endfor-%}
 {%-endmacro-%}
 {%-set client = spec['x-client-role'] or 'client'%}
@@ -8,6 +8,8 @@
 *Version {{ spec.info.version }}*
 
 {{spec.info.description}}
+
+{%include 'operation_list.md.jinja2'%}
 
 {%-if spec.tags | length > 0 %}
 ## Tags
@@ -25,16 +27,25 @@
  * [{{ch.subscribe.summary or ch.subscribe.operationId}}](#{{ch.subscribe.operationId}}) {{ch.subscribe.GetTagNote(tag.name)}}
 {%-endif%}
 {%-endfor%}
+<details>
+<summary>
+{{tagItems | length}} operation{%if tagItems | length != 1 %}s{%endif%}
+</summary>
+{{tagList}}
+</details>
+
 {%endfor%}
 {%-endif%} {# end if spec.tags #}
 
-## {{client |PascalCase}} may publish...
+## Publish operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'publish' in ch%}
 {%-set op = ch.publish %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or op.operationId}}
 ###### ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
-
+{%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
+**See also**: {%for altOpId in op['x-see-also']['operationIds'] %}[{{altOpId}}](#{{altOpId}}){%if not loop.last%}, {%endif%}{%endfor%}
+{%endif-%}
 ##### {{client |PascalCase}} publishes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
 
@@ -48,13 +59,15 @@
 ----
 {% endfor %} {#publish operations#}
 
-## {{client |PascalCase}} may subscribe...
+## Subscribe operations by {{client |PascalCase}}
 {%for ch in spec.channels.values() if 'subscribe' in ch%}
 {%-set op = ch.subscribe %}<a name="{{op.operationId}}"></a>
 ### {{op.summary or op.operationId}}
 ###### Operation ID: `{{op.operationId}}` {%if op.GetQoS()%}QoS: {{op.GetQoS()}}{%endif%} {%if op.GetRetain()%}Retained{%endif%}
 {{op.description}}
-
+{%if 'x-see-also' in op and 'operationIds' in op['x-see-also'] %}
+**See also**: {%for altOpId in op['x-see-also']['operationIds'] %}[{{altOpId}}](#{{altOpId}}){%if not loop.last%}, {%endif%}{%endfor%}
+{%endif-%}
 ##### {{client |PascalCase}} subscribes to topic: `{{ch.channelPath}}`
 {{ParamList(ch)}}
 {%-if ch.GetPathParameters() | length > 0 %}

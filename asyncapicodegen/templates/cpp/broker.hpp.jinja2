@@ -6,6 +6,7 @@
 #include <queue>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/thread/mutex.hpp>
+#include <functional>
 
 {%include 'ibrokerconnection.hpp.jinja2'%}
 
@@ -66,33 +67,61 @@ public:
      * \param qos the MQTT quality of service value between 0 and 2 inclusive.
      * \param retain an indicator that the MQTT broker should retain the message.
      */
-    virtual void Publish(const std::string& topic, const std::string& payload, unsigned qos, bool retain);
+    virtual void Publish(const std::string& topic, const std::string& payload, unsigned qos, bool retain) override;
 
     /*! Subscribe to a topic.
      * \param topic the subscription topic.
      * \param qos an MQTT quality of service value between 0 and 2 inclusive.
      */
-    virtual void Subscribe(const std::string& topic, int qos);
+    virtual void Subscribe(const std::string& topic, int qos) override;
 
     /*! Add a function that is called on the receipt of a message.
      * Many callbacks can be added, and each will be called in the order in which the callbacks were added.
      * \param cb the callback function.
      */
-    virtual void AddMessageCallback(const std::function<void(const std::string&, const std::string&)>& cb);
+    virtual void AddMessageCallback(const std::function<void(const std::string&, const std::string&)>& cb) override;
 
     /*! Determines if a topic string matches a subscription topic.
      * \param topic a topic to match against a subscription.
      * \param subscr the subscription topic string to match against.
      * \return true if it is a match.
      */
-    virtual bool TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const;
+    virtual bool TopicMatchesSubscription(const std::string& topic, const std::string& subscr) const override;
+
+    enum class MessageType
+    {
+        CONNECTION,
+        SUBSCRIPTION,
+        PUBLISH,
+        RECEIPT,
+        INTERNAL
+    };
+
+    enum class MessageSeverity
+    {
+        INFO,
+        ERROR
+    };
+
+    /*! Registers a method to be called for logging messages.
+     * \param cb The function to be called.
+     */
+    virtual void RegisterLogCallback(const std::function<void(MessageType, MessageSeverity, const std::string&)& cb>);
 
 protected:
     /*! Establishes the connection to the broker.
      */
     virtual void Connect();
 
-
+    /*! Logs a message.
+     * 
+     * Sends a log message to the logger, if one is registered.
+     *
+     * \param type The type of message that is being logged.
+     * \param lvl The severity of the message to be logged.
+     * \param msg The log message string.
+     */
+    virtual void Log(MessageType type, MessageSeverity lvl, const std::string& msg) const;
 private:
     class MqttMessage
     {
@@ -125,6 +154,7 @@ private:
     boost::mutex _mutex;
     std::vector<std::function<void(const std::string&, const std::string&)>> _messageCallbacks;
     std::queue<MqttMessage> _msgQueue;
+    std::function<void(MessageType, MessageSeverity, const std::string&) _logger;
 };
 
 {%for n in ns|reverse%}
