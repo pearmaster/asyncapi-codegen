@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--output_dir", type=str, help="Directory where output files should be written", required=True)
     parser.add_argument("--name", type=str, help="Name of the class that is generated", required=True)
-    parser.add_argument("--progtype", type=str, choices=["provider", "utilizer", "library"], default="provider")
+    parser.add_argument("--progtype", type=str, choices=["provider", "utilizer"], default="utilizer")
     parser.add_argument("--verbose", action="store_true", help="Display generated files")
 
     lang = parser.add_mutually_exclusive_group(required=True)
