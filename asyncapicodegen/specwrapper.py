@@ -4,6 +4,9 @@ import re
 from jsonschemacodegen import json_example
 from jsonschemacodegen.schemawrappers import SchemaFactory
 import json
+import logging
+
+logger = logging.getLogger('SpecWrapper')
 
 class BaseDict(collections.UserDict):
 
@@ -298,7 +301,7 @@ class ServerObject(BaseDict):
         if self.data['protocol'] != 'mqtt':
             raise NotImplementedError(f"{self.data} is not a supported protocol")
         if 'protocolVersion' in self.data and self.data['protocolVersion'] != "3.1":
-            raise NotImplementedError
+            raise NotImplementedError("Versions of MQTT other than 3.1 are not yet supported.")
 
     def GetUrl(self, partIndex=None):
         pattern = r"\{\w+\}"
@@ -376,8 +379,9 @@ class Servers(BaseDict):
         for k, v in initialdata.items():
             try:
                 newDict[k] = ServerObject(root, k, v)
-            except NotImplementedError:
+            except NotImplementedError as e:
                 # Skip servers that are unsupported
+                logging.warning("Server {k} is not supported", exc_info=e)
                 pass
         super().__init__(root, newDict)
 
@@ -447,6 +451,29 @@ class SpecRoot(BaseDict):
             return inst
         else:
             return self.resolver.get_schema(ref, root=otherRoot)
+
+    def get_example_server(self) -> ServerObject|None:
+        for server_key, server_obj in self.data['servers']:
+            if server_key.lower() == 'test':
+                return server_obj
+            if server_key.lower() == 'example':
+                return server_obj
+            if 'x-example' in server_obj and server_obj['x-example'] is True:
+                return server_obj
+        return
+    
+    def create_example_server(self) -> ServerObject:
+        example_server_obj = {
+            "url": "{hostname}:{port}",
+            "protocol": "mqtt",
+            "protocolVersion": "3.1",
+            "description": "An generic example server usable for testing purposes",
+            "variables": {
+                "hostname": {},
+                "port": {},
+            }
+        }
+        return ServerObject(self, "Example", example_server_obj)
 
     def __repr__(self):
         return f"Spec<{self.name}>"
